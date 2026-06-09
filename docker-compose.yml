@@ -1,0 +1,17 @@
+
+  services:
+
+    typst-worker:
+      build:
+        context: worker
+        dockerfile: Dockerfle.typst
+
+    latex-worker:
+      build:
+        context: worker
+        dockerfile: Dockerfle.latex
+
+    restapi:
+      build:
+        context: restapi
+        dockerfile: Dockerfle

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaTeX / Typst Live Renderer</title>
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f7fb;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            height: 100%;
+        }
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .preview-pane {
+            flex: 1;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .preview-pane h3 {
+            margin: 0;
+            padding: 16px 20px;
+            background: #f8f9fc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        textarea {
+            width: 100%;
+            height: 60%;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 14px;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            resize: vertical;
+            background: #fefefe;
+        }
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        select, button {
+            padding: 8px 16px;
+            border-radius: 40px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button {
+            background: #0f172a;
+            color: white;
+            border: none;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #1e293b;
+        }
+        .status {
+            font-size: 13px;
+            color: #475569;
+            margin-top: 8px;
+        }
+        .pdf-viewer {
+            flex: 1;
+            width: 100%;
+            border: none;
+        }
+        .error {
+            color: #b91c1c;
+            background: #fee2e2;
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 12px;
+        }
+        /* Spinner while rendering */
+        .htmx-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e2e8f0;
+            border-top-color: #0f172a;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        button.htmx-request .btn-text {
+            visibility: hidden;
+        }
+        button.htmx-request .htmx-indicator {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="editor-pane">
+        <h2>📄 Document Editor</h2>
+        <textarea name="source" form="renderForm" placeholder="Write your LaTeX or Typst document here...">\documentclass{article}
+\usepackage{amsmath}
+\begin{document}
+\title{Hello World}
+\author{You}
+\maketitle
+
+\[
+E = mc^2
+\]
+
+\end{document}</textarea>
+        
+        <form id="renderForm" 
+              hx-post="/render" 
+              hx-target="#pdfPreview" 
+              hx-swap="innerHTML"
+              hx-indicator="#submitBtn"
+              hx-encoding="multipart/form-data">
+            <div class="toolbar">
+                <select name="engine">
+                    <option value="latex">LaTeX (pandoc + xelatex)</option>
+                    <option value="typst">Typst</option>
+                </select>
+                <input type="hidden" name="format" value="pdf">
+                <button id="submitBtn" type="submit">
+                    <span class="btn-text">Render to PDF</span>
+                    <span class="htmx-indicator"></span>
+                </button>
+            </div>
+        </form>
+        <div class="status">
+            💡 Tip: LaTeX requires full document with \begin{document}. Typst is ready out of the box.
+        </div>
+    </div>
+
+    <div class="preview-pane">
+        <h3>📑 PDF Preview</h3>
+        <div id="pdfPreview" style="flex: 1; display: flex; align-items: center; justify-content: center; background: #f1f5f9;">
+            <div style="color: #64748b;">Click "Render to PDF" to see output here</div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
