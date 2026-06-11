@@ -41,8 +41,8 @@ services:
 
   restapi:
     build:
-      context: ./goworkspace/restapi
-      dockerfile: Dockerfile
+      context: ./goworkspace
+      dockerfile: Dockerfile.restapi
     container_name: restapi
     ports: 
       - "8080:8080"
@@ -55,10 +55,10 @@ services:
     restart: unless-stopped
 
 
-  worker-latex:
+  worker-typst:
     build:
-      context: ./goworkspace/worker
-      dockerfile: Dockerfile.typst
+      context: ./goworkspace
+      dockerfile: Dockerfile.worker-typst
     container_name: worker-typst
     env_file:
       - ./goworkspace/worker.env
@@ -71,8 +71,8 @@ services:
 
   worker-latex:
     build:
-      context: ./goworkspace/worker
-      dockerfile: Dockerfile.latex
+      context: ./goworkspace
+      dockerfile: Dockerfile.worker-latex
     container_name: worker-latex
     env_file:
       - ./goworkspace/worker.env

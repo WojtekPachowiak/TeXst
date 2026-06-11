@@ -1,4 +1,4 @@
-package worker
+package main
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/redis/go-redis/v9"
 
-	"tex-typst-rendering-cluster/storage"
+	"storage"
 )
 
 type Job struct {

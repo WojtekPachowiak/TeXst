@@ -14,13 +14,13 @@ type Environment struct {
 	MINIO_SECRET_KEY string
 	MINIO_USE_SSL    string
 }
+
 var env Environment
 
-
-func InitMinio() (*minio.Client,error) {
+func InitMinio() (*minio.Client, error) {
 	err := envconfig.Process("", &env)
 	if err != nil {
-		return nil ,err
+		return nil, err
 	}
 
 	client, err := minio.New(env.MINIO_ENDPOINT, &minio.Options{
@@ -28,7 +28,7 @@ func InitMinio() (*minio.Client,error) {
 		Secure: env.MINIO_USE_SSL == "true",
 	})
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	log.Println("MinIO CLient initialized successfully")

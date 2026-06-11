@@ -1,12 +1,12 @@
 FROM golang:1.26-alpine AS builder
 WORKDIR /app
-COPY go.mod go.sum ./
+COPY restapi/go.mod restapi/go.sum ./
 RUN go mod download
 COPY . .
-RUN go build -o restapi ./main.go
+RUN go build -o server restapi 
 
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates
-COPY --from=builder /app/restapi /usr/local/bin/restapi
+COPY --from=builder /app/server /usr/local/bin/server
 EXPOSE 8080
-CMD ["restapi"]
+CMD ["server"]
