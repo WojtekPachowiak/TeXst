@@ -6,16 +6,16 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o server ./main.go
+RUN go build -o work ./main.go
 
 # Stage 2: Runtime image with pandoc/latex
 FROM pandoc/typst:3.9
 
 # Copy the binary from the builder stage
-COPY --from=builder /app/server /usr/local/bin/server
+COPY --from=builder /app/work /usr/local/bin/work
 
-# Expose the port your server listens on (adjust if needed)
-EXPOSE 8080
+# Expose the port your work listens on (adjust if needed)
+# EXPOSE 8080
 
-# Start the server
-CMD ["server"]
+# Start the work
+CMD ["work"]

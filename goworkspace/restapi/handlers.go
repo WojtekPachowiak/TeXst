@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -54,9 +53,9 @@ func renderHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch engine {
 	case "latex":
-		targetStream = streamLatex
+		targetStream = env.STREAM_LATEX
 	case "typst":
-		targetStream = streamTypst
+		targetStream = env.STREAM_TYPST
 	}
 
 	ctx := context.Background()
@@ -86,7 +85,6 @@ func renderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = redisClient.HSet(ctx, fmt.Sprintf("job:%s", jobID), status).Err()
 	if err != nil {
-
 		log.Printf("Warning: failed to save initial status: %v", err)
 	}
 
@@ -101,19 +99,12 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	statusMap, err := redisClient.HGetAll(ctx, fmt.Sprintf("job:%s", jobID)).Result()
-	if err != nil || len(statusMap) == 0 {
-		http.Error(w, "Job not found", http.StatusNotFound)
-		return
+
+	resp, err := getJobStatusStruct(ctx, jobID)
+	if err != nil {
+		http.Error(w, "Could not get job status", http.StatusNotFound)
 	}
 
-	resp := JobStatus{
-		Status:    statusMap["status"],
-		CreatedAt: statusMap["created_at"],
-		UpdatedAt: statusMap["updated_at"],
-		Error:     statusMap["error"],
-		ResultURL: statusMap["result_url"],
-	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
@@ -127,37 +118,48 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	status, err := redisClient.HGet(ctx, fmt.Sprintf("job:%s", jobID), "status").Result()
+
+	status, err := getJobStatusField(ctx, jobID)
+	if status != "completed" {
+		http.Error(w, fmt.Sprintf("Job not completed (status: %s)", status), http.StatusAccepted)
+		return
+	}
+
+	jobStatus, err := getJobStatusStruct(ctx, jobID)
 	if err != nil {
-
-		http.Error(w, "Job not found", http.StatusNotFound)
-		return
-	}
-	if status != "completed"{
-		http.Error(w, fmt.Sprintf("Job not completed (status: %s)",status),http.StatusAccepted)
-		return
+		http.Error(w, "Could not get job status", http.StatusInternalServerError)
 	}
 
-	
-	files, err := filepath.Glob(filepath.Join("rendered", jobID, "output") + ".*" )
-	if err != nil {
-		http.Error(w,"[Internal Server Error] Searching for rendered result failed.",http.StatusInternalServerError)
-		return
-	}
-	if len(files) != 0 {
-		http.Error(w,"[Internal Server Error] The file count should be 1.",http.StatusInternalServerError)
-		return
+	if jobStatus.ResultURL == "" {
+		http.Error(w, "Could not locate the result's location", http.StatusInternalServerError)
 	}
 
-	filePath := files[0]
-	fileExt := filepath.Ext(filePath)
-	log.Printf("File path is %s", filePath)
-	if _, err := os.Stat(filePath); os.IsNotExist(err){
-		http.Error(w, "Result file not found", http.StatusNotFound)
-		return
-	}
+	objectName := jobStatus.ResultURL
+	presignedURL, err := getPresignedURL(ctx, objectName)
 
-	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%s.%s", jobID, fileExt))
-	http.ServeFile(w,r, filePath)
+	// files, err := filepath.Glob(filepath.Join("rendered", jobID, "output") + ".*" )
+	// if err != nil {
+	// 	http.Error(w,"[Internal Server Error] Searching for rendered result failed.",http.StatusInternalServerError)
+	// 	return
+	// }
+	// if len(files) != 0 {
+	// 	http.Error(w,"[Internal Server Error] The file count should be 1.",http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// filePath := files[0]
+	// fileExt := filepath.Ext(filePath)
+	// log.Printf("File path is %s", filePath)
+	// if _, err := os.Stat(filePath); os.IsNotExist(err){
+	// 	http.Error(w, "Result file not found", http.StatusNotFound)
+	// 	return
+	// }
+
+	resp := map[string]string{"url": presignedURL}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+
+	// w.Header().Set("Content-Type", "application/pdf")
+	// w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%s.%s", jobID, fileExt))
+	// http.ServeFile(w, r, filePath)
 }
