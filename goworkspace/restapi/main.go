@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/minio/minio-go/v7"
@@ -30,6 +29,7 @@ type JobStatus struct {
 
 var redisClient *redis.Client
 var minioClient *minio.Client
+var minioPresigner *minio.Client
 
 // const (
 // 	streamLatex = "stream:latex"
@@ -59,7 +59,7 @@ func main() {
 		Addr: env.REDIS_ADDR,
 	})
 
-	minioClient, err = storage.InitMinio()
+	minioClient, minioPresigner, err = storage.InitMinio()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -72,14 +72,18 @@ func main() {
 	redisClient.XGroupCreateMkStream(ctx, env.STREAM_LATEX, env.CONSMUMER_GROUP_LATEX, "0").Err()
 	redisClient.XGroupCreateMkStream(ctx, env.STREAM_TYPST, env.CONSUMER_GROUP_TYPST, "0").Err()
 
-	os.MkdirAll("rendered", 0755)
+	// os.MkdirAll("rendered", 0755)
 
-	http.Handle("/", http.FileServer(http.Dir("./static")))
-	http.HandleFunc("/render", renderHandler)
-	http.HandleFunc("/status/", statusHandler)
-	http.HandleFunc("/result/", resultHandler)
-	http.Handle("/rendered/", http.StripPrefix("/rendered/", http.FileServer(http.Dir("./rendered"))))
+	mux := http.NewServeMux()
 
-	log.Println("API listening on http:/localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	mux.Handle("/", http.FileServer(http.Dir("./static")))
+	mux.HandleFunc("/render", renderHandler)
+	mux.HandleFunc("/status/", statusHandler)
+	mux.HandleFunc("/result/", resultHandler)
+	// http.Handle("/rendered/", http.StripPrefix("/rendered/", http.FileServer(http.Dir("./rendered"))))
+
+	wrappedMux := loggingMiddleware(mux)
+
+	log.Println("API listening on http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", wrappedMux))
 }

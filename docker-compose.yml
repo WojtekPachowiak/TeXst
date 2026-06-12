@@ -35,7 +35,7 @@ services:
       sleep 5;
       /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin;
       /usr/bin/mc mb set myminio/rendered-documents --ignore-existing;
-      /usr/bin/mc anonymous set download myminio/rendered-documents;
+      # /usr/bin/mc anonymous set download myminio/rendered-documents;
       exit 0;
       "
 
@@ -49,6 +49,8 @@ services:
     env_file:
       - ./goworkspace/restapi.env
       - ./goworkspace/storage.env
+    volumes: #ONLY FOR DEV
+      - /home/wojte/MyDevEnv/tex-typst-rendering-cluster/goworkspace/restapi/static:/app/static
     depends_on:
       - redis
       - minio

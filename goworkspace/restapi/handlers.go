@@ -88,6 +88,12 @@ func renderHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Warning: failed to save initial status: %v", err)
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"job_id": jobID,
+		// "status": "/status/" + jobID,
+	})
+
 }
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +126,14 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
 	status, err := getJobStatusField(ctx, jobID)
-	if status != "completed" {
+	if err != nil {
+		http.Error(w, "Could not get job status", http.StatusInternalServerError)
+		return
+	}
+	if status == "failed" {
+		http.Error(w, fmt.Sprintf("Job not completed (status: %s)", status), http.StatusInternalServerError)
+		return
+	} else if status != "completed" {
 		http.Error(w, fmt.Sprintf("Job not completed (status: %s)", status), http.StatusAccepted)
 		return
 	}
@@ -128,38 +141,46 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 	jobStatus, err := getJobStatusStruct(ctx, jobID)
 	if err != nil {
 		http.Error(w, "Could not get job status", http.StatusInternalServerError)
+		return
 	}
 
 	if jobStatus.ResultURL == "" {
 		http.Error(w, "Could not locate the result's location", http.StatusInternalServerError)
+		return
 	}
 
 	objectName := jobStatus.ResultURL
 	presignedURL, err := getPresignedURL(ctx, objectName)
-
-	// files, err := filepath.Glob(filepath.Join("rendered", jobID, "output") + ".*" )
-	// if err != nil {
-	// 	http.Error(w,"[Internal Server Error] Searching for rendered result failed.",http.StatusInternalServerError)
-	// 	return
-	// }
-	// if len(files) != 0 {
-	// 	http.Error(w,"[Internal Server Error] The file count should be 1.",http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// filePath := files[0]
-	// fileExt := filepath.Ext(filePath)
-	// log.Printf("File path is %s", filePath)
-	// if _, err := os.Stat(filePath); os.IsNotExist(err){
-	// 	http.Error(w, "Result file not found", http.StatusNotFound)
-	// 	return
-	// }
+	if err != nil {
+		http.Error(w, "Could not generate presigned URL", http.StatusInternalServerError)
+		log.Printf("Error: %s", err)
+		return
+	}
 
 	resp := map[string]string{"url": presignedURL}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 
-	// w.Header().Set("Content-Type", "application/pdf")
-	// w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%s.%s", jobID, fileExt))
-	// http.ServeFile(w, r, filePath)
 }
+
+// files, err := filepath.Glob(filepath.Join("rendered", jobID, "output") + ".*" )
+// if err != nil {
+// 	http.Error(w,"[Internal Server Error] Searching for rendered result failed.",http.StatusInternalServerError)
+// 	return
+// }
+// if len(files) != 0 {
+// 	http.Error(w,"[Internal Server Error] The file count should be 1.",http.StatusInternalServerError)
+// 	return
+// }
+
+// filePath := files[0]
+// fileExt := filepath.Ext(filePath)
+// log.Printf("File path is %s", filePath)
+// if _, err := os.Stat(filePath); os.IsNotExist(err){
+// 	http.Error(w, "Result file not found", http.StatusNotFound)
+// 	return
+// }
+
+// w.Header().Set("Content-Type", "application/pdf")
+// w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%s.%s", jobID, fileExt))
+// http.ServeFile(w, r, filePath)

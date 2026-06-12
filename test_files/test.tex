@@ -1,0 +1,249 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\setlength\parindent{0pt}
+\usepackage[T1]{fontenc}
+% \usepackage{polski}
+\title{Równania różniczkowe cząstkowe, część A}
+\author{Wojciech Pachowiak}
+\date{2024SZ}
+
+\begin{document}
+
+% \maketitle
+
+\break
+
+\section*{Zadanie 14}
+$$ 
+(e^z - e^y)\frac{\partial{u}}{\partial{x}} +
+(e^x - e^z)\frac{\partial{u}}{\partial{y}} +
+(e^y - e^x)\frac{\partial{u}}{\partial{z}}
+= 0
+$$
+
+
+Układ równań charakterystyk:
+\begin{align*}
+    x' &= \frac{dx}{dt} = e^z - e^y  \\
+    y' &= \frac{dy}{dt} = e^x - e^z  \\
+    z' &= \frac{dz}{dt} = e^y - e^x
+\end{align*}
+
+
+Postać symetryczna:
+$$
+\frac{dx}{e^z - e^y} = \frac{dy}{e^x - e^z} = \frac{dz}{e^y - e^x} = dt
+$$
+
+
+Współczynniki nieoznaczone:
+\begin{table}[h]
+\begin{tabular}{@{}lllll@{}}
+\toprule
+                          & 0 & 0                      \\ \midrule
+$\lambda_1$ & 1 & $e^x$    \\
+$\lambda_2$ & 1 & $e^y$     \\
+$\lambda_3$ & 1 & $e^z$    \\ \bottomrule
+\end{tabular}
+\end{table}
+
+Pierwsza całka pierwsza:
+$$dx + dy + dz = 0$$
+$$ x+y+z = C_1 = u_1(x,y,z)  $$
+
+Druga całka pierwsza:
+$$ e^xdx + e^ydy + e^zdz = 0 $$
+$$ e^x + e^y + e^z =  C_2 =  u_2(x,y,z) $$
+
+
+
+Niezależność funkcyjna: 
+$$
+J =
+\begin{bmatrix}
+   1 & 1 & 1 \\ e^x & e^y & e^z 
+\end{bmatrix}
+$$
+
+Dla $x \ne y \ne z \ne 0$ mamy $rz(J) = 2$.
+
+\bigskip
+
+
+Rozwiązanie ogólne:
+
+$$ u(x,y,z) = F(x+y+z, e^x + e^y + e^z) $$
+
+dla $ F \in C^1(\Omega) $.
+
+
+
+% \input{zad16.tex}
+
+\section*{Zadanie 17}
+$$ 
+x\frac{\partial{z}}{\partial{x}} +
+y\frac{\partial{z}}{\partial{y}} =
+z^2y
+$$
+
+$$ 
+\Gamma: \quad x=t \quad y=t^2 \quad z=1 
+$$
+
+Linearyzuję:
+
+$$ z = Z(x,y) $$
+$$ u(x,y,z) = z - Z(x,y) $$
+
+\begin{align*}
+\frac{\partial{u}}{\partial{x}} &= -\frac{\partial{Z}}{\partial{x}} =
+-\frac{\partial{z}}{\partial{x}} 
+\\
+\frac{\partial{u}}{\partial{y}} &= -\frac{\partial{Z}}{\partial{y}} =
+-\frac{\partial{z}}{\partial{y}} 
+\\
+\frac{\partial{u}}{\partial{z}} &= 1
+\end{align*}
+
+Zlinearyzowane równanie:
+$$ 
+-x\frac{\partial{u}}{\partial{x}} 
+-y\frac{\partial{u}}{\partial{y}} =
+z^2y\frac{\partial{u}}{\partial{z}}
+$$
+$$ 
+x\frac{\partial{u}}{\partial{x}} +
+y\frac{\partial{u}}{\partial{y}} +
+z^2y\frac{\partial{u}}{\partial{z}} = 0
+$$
+
+
+Układ równań charakterystyk:
+\begin{align*}
+    x' &= \frac{dx}{dt} = x  \\
+    y' &= \frac{dy}{dt} = y  \\
+    z' &= \frac{dz}{dt} = z^2y
+\end{align*}
+
+
+Postać symetryczna:
+$$
+\frac{dx}{x} = \frac{dy}{y} = \frac{dz}{z^2y} = dt
+$$
+
+
+Pierwsze z drugim:
+$$
+\int \frac{1}{x} dx = \int \frac{1}{y} dy 
+$$
+$$
+\ln|x| = \ln|y| + C_1
+$$
+$$
+\ln\left(\frac{x}{y}\right) = C_1 
+$$
+$$
+\frac{x}{y} = C_1 = u_1(x,y,z)
+$$
+
+Drugie z trzecim:
+$$
+y dy = \frac{1}{z^2y} dz
+$$
+$$
+\int dy = \int \frac{1}{z^2} dz
+$$
+$$
+y = -\frac{1}{z} + C_2
+$$
+$$
+y + \frac{1}{z} = C_2 = u_2(x,y,z)
+$$
+
+
+Niezależnośc funkcyjna: \\ 
+\begin{align*}
+J &= \begin{bmatrix}
+    \dfrac{\partial{u_1}}{\partial{x}} & \dfrac{\partial{u_1}}{\partial{y}} & \dfrac{\partial{u_1}}{\partial{z}} \\
+    \dfrac{\partial{u_2}}{\partial{x}} & \dfrac{\partial{u_2}}{\partial{y}} & \dfrac{\partial{u_2}}{\partial{z}}
+\end{bmatrix} \\
+&= \begin{bmatrix}
+    \dfrac{1}{y} & -\dfrac{1}{y^2} & 0 \\
+    0 & 1 & -\dfrac{1}{z^2}
+\end{bmatrix}
+\end{align*}
+
+Całki pierwsze $u_1(x,y,z)$ i $u_2(x,y,z)$ są niezależne funkcyjnie, bo wyznacznik
+$$
+\begin{vmatrix}
+\dfrac{1}{y} & -\dfrac{1}{y^2} \\
+0 & 1
+\end{vmatrix} \ne 0
+$$
+jest różny od zera dla dowolnego $y \in \mathbb{R}$. Zatem $rz(J) = 2$. 
+
+\bigskip
+
+Podstawienie na krzywej $\Gamma$:
+$$
+\tilde{C}_1 = \frac{t}{t^2} = \frac{1}{t}
+$$
+$$
+t = \frac{1}{\tilde{C}_1}
+$$
+
+$$
+\tilde{C}_2 = t^2 + 1
+$$
+$$
+t = \pm \sqrt{\tilde{C}_2 - 1}
+$$
+
+$$
+\Downarrow
+$$
+
+$$
+\frac{1}{\tilde{C}_1} = \pm \sqrt{\tilde{C}_2 - 1}
+$$
+$$
+\left(\frac{1}{\tilde{C}_1}\right)^2 = \tilde{C}_2 - 1
+$$
+
+
+Wracamy na całą dziedzinę:
+$$
+\left(\frac{1}{{C}_1}\right)^2 = {C}_2 - 1
+$$
+$$
+\frac{y^2}{x^2} = y + \frac{1}{z} - 1 
+$$
+
+
+Szukamy postaci funkcji $z$:
+$$
+y + \frac{1}{z} - 1 = \frac{y^2}{x^2}
+$$
+$$
+\frac{1}{z} = \frac{y^2}{x^2} -y + 1
+$$
+$$
+z = \frac{1}{\dfrac{y^2}{x^2} -y + 1}
+$$
+$$
+z = \frac{x^2}{y^2 - x^2y + x^2}
+$$
+
+
+Funkcja $z$ jest zdefiniowana na $\mathbb{R}^2 \setminus \{(x,y) \in \mathbb{R}^2 : y^2 - x^2y + x^2 = 0\}$.
+
+
+
+
+
+
+\end{document}

@@ -381,3 +381,4 @@ TSWLatexianTemp*
 *.typst
 *.tex
 !Dockerfile.*
+!test.*

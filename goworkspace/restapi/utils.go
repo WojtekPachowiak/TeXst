@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
-	"time"
 	"fmt"
+	"log"
+	"net/http"
+	"time"
 )
 
 func getPresignedURL(ctx context.Context, objectName string) (string, error) {
@@ -11,7 +13,7 @@ func getPresignedURL(ctx context.Context, objectName string) (string, error) {
 
 	expires := time.Duration(15) * time.Minute
 
-	presignedURL, err := minioClient.PresignedGetObject(ctx, bucketName, objectName, expires, nil)
+	presignedURL, err := minioPresigner.PresignedGetObject(ctx, bucketName, objectName, expires, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to generated presigned URL: %w", err)
 	}
@@ -44,4 +46,13 @@ func getJobStatusField(ctx context.Context, jobID string) (string, error) {
 	}
 
 	return status, nil
+}
+
+// =========================
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s %s %s", r.Method, r.URL.Path, r.RemoteAddr)
+		next.ServeHTTP(w, r)
+	})
 }

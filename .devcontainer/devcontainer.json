@@ -5,7 +5,7 @@
     "service": "main",
     "customizations": {
         "vscode": {
-            "extensions": ["golang.go"],
+            "extensions": ["golang.go", "ms-vscode.live-server"],
             "settings": {
                 "go.useLanguageServer": true,
                 "go.toolsManagement.autoUpdate": true

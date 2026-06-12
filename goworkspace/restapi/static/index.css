@@ -1,0 +1,167 @@
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f7fb;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            transition: all 0.2s ease;
+            height: 100%;
+        }
+
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .preview-pane {
+            flex: 1;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+
+
+        .editor-pane h2 {
+            margin: 0;
+            padding: 10px 0px;
+            font-weight: 400;
+        }
+
+        .preview-pane h3 {
+            margin: 0;
+            padding: 16px 20px;
+            background: #f8f9fc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100%;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: medium;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            resize: vertical;
+            background: #fefefe;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        select,
+        button {
+            padding: 8px 16px;
+            border-radius: 40px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            /* font-size: 14px; */
+            cursor: pointer;
+        }
+
+        button {
+            background: #0f172a;
+            color: white;
+            border: none;
+            /* font-weight: 300; */
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1e293b;
+        }
+
+        .status {
+            font-size: small;
+            color: #475569;
+            margin-top: 8px;
+        }
+
+        .pdf-viewer {
+            flex: 1;
+            width: 100%;
+            border: none;
+        }
+
+        .error {
+            color: #b91c1c;
+            background: #fee2e2;
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 12px;
+        }
+
+        /* Spinner while rendering */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e2e8f0;
+            border-top-color: #0f172a;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* vertical mode when screen narrow */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            body {
+                height: unset;
+                overflow-y: scroll;
+            }
+
+            textarea {
+                min-height: 200px;
+
+            }
+
+            .preview-pane {
+                min-height: 200px;
+            }
+
+
+        }
+
+        .pdf-preview {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f1f5f9;
+        }

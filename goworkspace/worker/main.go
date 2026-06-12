@@ -53,7 +53,7 @@ func main() {
 		Addr: env.REDIS_ADDR,
 	})
 
-	minioClient, err = storage.InitMinio()
+	minioClient, _, err = storage.InitMinio()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -116,6 +116,7 @@ func main() {
 				if err != nil {
 					log.Printf("Job %s failed: %v", jobID, err)
 					markJobFailed(jobID, err.Error())
+					continue
 				} else {
 					updateJobStatus(jobID, "uploading", "", "")
 					log.Printf("Job %s processed and awaits upload to storage", jobID)
@@ -125,10 +126,13 @@ func main() {
 				if err != nil {
 					log.Printf("Job %s could not be upload to storage: %v", jobID, err)
 					markJobFailed(jobID, err.Error())
+					continue
 				} else {
 					updateJobStatus(jobID, "completed", "", resultURL)
-					log.Printf("Job %s processed and awaits upload to storage", jobID)
+					log.Printf("Job %s processed and uploaded to storage", jobID)
 				}
+
+				acknowledgeMessage(message.ID)
 
 			}
 		}
@@ -161,14 +165,15 @@ func processJob(job Job) (string, error) {
 	var cmd *exec.Cmd
 	switch job.Engine {
 	case "latex":
-		cmd = exec.Command("pandoc", inputPath, "-o", pdfPath, "--pdf-engine=xelatex")
+		// cmd = exec.Command("pdflatex", inputPath)
+		cmd = exec.Command("pandoc", inputPath, "-o", pdfPath, "--pdf-engine=pdflatex")
 	case "typst":
 		cmd = exec.Command("pandoc", inputPath, "-o", pdfPath, "--pdf-engine=typst")
 	}
 
-	output, err := cmd.CombinedOutput()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("pandoc execution failed: %s\n%s", err, output)
+		return "", fmt.Errorf("pandoc execution failed: %s\n%s", err, out)
 	}
 
 	var outputPath string
@@ -177,9 +182,14 @@ func processJob(job Job) (string, error) {
 		outputPath = pdfPath
 	case "png":
 		pngPath := strings.Replace(pdfPath, ".pdf", ".png", -1)
-		err = exec.Command("convert", "-density", "150", pdfPath, "-quality", "90", pngPath).Run()
+		log.Printf("pngPath pdfPath: %s\n%s", pngPath, pdfPath)
+
+		cmd = exec.Command("magick", "-density", "150", pdfPath, "-quality", "90", pngPath)
+		out, err = cmd.CombinedOutput()
+		log.Printf("cmd output png conv: %s\n%s", err, out)
+		
 		if err != nil {
-			return "", fmt.Errorf("failed to convert pdf to png: %s", err)
+			return "", fmt.Errorf("failed to convert pdf to png: %s\n%s", err, out)
 		}
 		outputPath = pngPath
 	default:
@@ -236,14 +246,14 @@ func uploadToMinIO(jobID, outputPath string) (string, error) {
 	ext := filepath.Ext(outputPath)
 	var contentType string
 	switch ext {
-	case "png":
+	case ".png":
 		contentType = "image/png"
-	case "pdf":
+	case ".pdf":
 		contentType = "application/pdf"
 	default:
 		return "", fmt.Errorf("the file to be uploaded has unsupported format: %s", ext)
 	}
-	objectName := fmt.Sprintf("%s/output."+ext, jobID)
+	objectName := fmt.Sprintf("%s/output"+ext, jobID)
 
 	// Upload from the local path 'filePath' to the bucket
 	_, err = minioClient.FPutObject(ctx, bucketName, objectName, outputPath, minio.PutObjectOptions{
