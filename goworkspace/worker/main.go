@@ -52,7 +52,7 @@ func main() {
 	redisClient = redis.NewClient(&redis.Options{
 		Addr: env.REDIS_ADDR,
 	})
-
+	
 	minioClient, _, err = storage.InitMinio()
 	if err != nil {
 		log.Fatal(err.Error())
@@ -90,56 +90,63 @@ func main() {
 			continue
 		}
 
+		//TODO: czy dobrze, że funkcje tworzą własny ctx?
+
+		//TODO: czy potrzeba XAUTOCLAIM?
+
 		for _, stream := range streams {
 			for _, message := range stream.Messages {
 				jobID := message.Values["job_id"].(string)
 				jobDataStr := message.Values["job_data"].(string)
 
-				var job Job
-				if err := json.Unmarshal([]byte(jobDataStr), &job); err != nil {
-					log.Printf("Failed to unmarshal job %s: %v", jobID, err)
-					markJobFailed(jobID, "Invalid job data")
-					acknowledgeMessage(message.ID)
-					continue
-				}
-
-				if job.Engine != env.WORKER_ENGINE {
-					log.Print("Worker received wrong job (engines do not match).")
-					markJobFailed(jobID, "Invalid job engine")
-					acknowledgeMessage(message.ID)
-					continue
-				}
-
-				updateJobStatus(jobID, "processing", "", "")
-
-				outputPath, err := processJob(job)
-				if err != nil {
-					log.Printf("Job %s failed: %v", jobID, err)
-					markJobFailed(jobID, err.Error())
-					continue
-				} else {
-					updateJobStatus(jobID, "uploading", "", "")
-					log.Printf("Job %s processed and awaits upload to storage", jobID)
-				}
-
-				resultURL, err := uploadToMinIO(jobID, outputPath)
-				if err != nil {
-					log.Printf("Job %s could not be upload to storage: %v", jobID, err)
-					markJobFailed(jobID, err.Error())
-					continue
-				} else {
-					updateJobStatus(jobID, "completed", "", resultURL)
-					log.Printf("Job %s processed and uploaded to storage", jobID)
-				}
-
+				processMessage(jobID, jobDataStr)
 				acknowledgeMessage(message.ID)
-
 			}
 		}
 	}
 }
 
-func processJob(job Job) (string, error) {
+func processMessage(jobID, jobDataStr string) error {
+	var job Job
+	if err := json.Unmarshal([]byte(jobDataStr), &job); err != nil {
+		log.Printf("Failed to unmarshal job %s: %v", jobID, err)
+		markJobFailed(jobID, "Invalid job data")
+		return err
+	}
+
+	if job.Engine != env.WORKER_ENGINE {
+		err := fmt.Errorf("Worker received wrong job (engines do not match).")
+		log.Print("%s", err)
+		markJobFailed(jobID, "Invalid job engine")
+		return err
+	}
+
+	updateJobStatus(jobID, "processing", "", "")
+
+	outputPath, err := renderDocument(job)
+	if err != nil {
+		log.Printf("Job %s failed: %v", jobID, err)
+		markJobFailed(jobID, err.Error())
+		return err
+	} else {
+		log.Printf("Job %s processed and awaits upload to storage", jobID)
+		updateJobStatus(jobID, "uploading", "", "")
+	}
+
+	resultURL, err := uploadToMinIO(jobID, outputPath)
+	if err != nil {
+		log.Printf("Job %s could not be upload to storage: %v", jobID, err)
+		markJobFailed(jobID, err.Error())
+		return err
+	} else {
+		updateJobStatus(jobID, "completed", "", resultURL)
+		log.Printf("Job %s processed and uploaded to storage", jobID)
+	}
+
+	return nil
+}
+
+func renderDocument(job Job) (string, error) {
 	jobDir := filepath.Join("rendered", job.ID)
 	if err := os.MkdirAll(jobDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create job directory: %w", err)
@@ -182,12 +189,10 @@ func processJob(job Job) (string, error) {
 		outputPath = pdfPath
 	case "png":
 		pngPath := strings.Replace(pdfPath, ".pdf", ".png", -1)
-		log.Printf("pngPath pdfPath: %s\n%s", pngPath, pdfPath)
 
 		cmd = exec.Command("magick", "-density", "150", pdfPath, "-quality", "90", pngPath)
 		out, err = cmd.CombinedOutput()
-		log.Printf("cmd output png conv: %s\n%s", err, out)
-		
+
 		if err != nil {
 			return "", fmt.Errorf("failed to convert pdf to png: %s\n%s", err, out)
 		}
@@ -231,17 +236,17 @@ func uploadToMinIO(jobID, outputPath string) (string, error) {
 	ctx := context.Background()
 
 	bucketName := env.MINIO_BUCKET_NAME
-	exists, err := minioClient.BucketExists(ctx, bucketName)
-	if err != nil {
-		return "", fmt.Errorf("failed to check bucket: %w", err)
-	}
-	if !exists {
-		err = minioClient.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
-		if err != nil {
-			return "", fmt.Errorf("failed to create bucket: %w", err)
-		}
-		log.Printf("Bucket '%s' created", bucketName)
-	}
+	// exists, err := minioClient.BucketExists(ctx, bucketName)
+	// if err != nil {
+	// 	return "", fmt.Errorf("failed to check bucket: %w", err)
+	// }
+	// if !exists {
+	// 	err = minioClient.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
+	// 	if err != nil {
+	// 		return "", fmt.Errorf("failed to create bucket: %w", err)
+	// 	}
+	// 	log.Printf("Bucket '%s' created", bucketName)
+	// }
 
 	ext := filepath.Ext(outputPath)
 	var contentType string
@@ -256,7 +261,7 @@ func uploadToMinIO(jobID, outputPath string) (string, error) {
 	objectName := fmt.Sprintf("%s/output"+ext, jobID)
 
 	// Upload from the local path 'filePath' to the bucket
-	_, err = minioClient.FPutObject(ctx, bucketName, objectName, outputPath, minio.PutObjectOptions{
+	_, err := minioClient.FPutObject(ctx, bucketName, objectName, outputPath, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
 	if err != nil {
