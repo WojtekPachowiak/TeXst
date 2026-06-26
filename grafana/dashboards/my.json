@@ -1,0 +1,47 @@
+{
+  "title": "LaTeX/Typst Rendering",
+  "panels": [
+    {
+      "title": "Jobs submitted (rate)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(rendering_jobs_submitted_total[1m])",
+          "legendFormat": "{{engine}}"
+        }
+      ]
+    },
+    {
+      "title": "Queue length",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rendering_queue_length",
+          "legendFormat": "{{engine}}"
+        }
+      ]
+    },
+    {
+      "title": "Job duration (p99)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(rendering_job_duration_seconds_bucket[5m])) by (le, engine, status))",
+          "legendFormat": "{{engine}} {{status}}"
+        }
+      ]
+    },
+    {
+      "title": "Worker CPU usage",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(container_cpu_usage_seconds_total{container=~\"worker-(latex|typst)\"}[1m])",
+          "legendFormat": "{{container}}"
+        }
+      ]
+    }
+  ]
+}
+
+

@@ -9,6 +9,14 @@ const spinner = document.getElementById('spinner');
 const statusDiv = document.getElementById('status');
 const previewDiv = document.getElementById('preview');
 
+const JobStatusQueued = "queued"
+const JobStatusUploading = "uploading"
+const JobStatusProcessing = "processing"
+const JobStatusFailed = "failed"
+const JobStatusCompleted = "completed"
+
+
+
 // Helper: show status message (can be error or info)
 function setStatus(message, isError = false) {
     statusDiv.innerHTML = message;
@@ -20,74 +28,91 @@ function setLoading(loading) {
     if (loading) {
         spinner.style.display = 'inline-block';
         submitBtn.disabled = true;
+        formatSelect.disabled = true;
         submitBtn.querySelector('.btn-text').style.opacity = '0.5';
     } else {
         spinner.style.display = 'none';
         submitBtn.disabled = false;
+        formatSelect.disabled = false;
         submitBtn.querySelector('.btn-text').style.opacity = '1';
     }
 }
 
-// Display PDF (using <object>)
-function displayPDF(url) {
-    previewDiv.innerHTML = `<object data="${url}" type="application/pdf" width="100%" height="100%" style="min-height: 500px;">
-        <p>Your browser cannot display PDFs. <a href="${url}">Download</a></p>
-    </object>`;
+
+function displayRender(url) {
+
+    // determine type of url based on mime type or file extension
+    let format = formatSelect.value;
+
+    if (format === "png"){
+        previewDiv.innerHTML = `<img src="${url}" alt="Rendered output" style="max-width: 100%; border: 1px solid #e2e8f0;">`;
+    }
+    
+    if (format === "pdf"){
+        previewDiv.innerHTML = `<object data="${url}" type="application/pdf" width="100%" height="100%" style="min-height: 500px;">
+            <p>Your browser cannot display PDFs. <a href="${url}">Download</a></p>
+        </object>`;
+    }
 }
 
-// Display PNG (using <img>)
-function displayPNG(url) {
-    previewDiv.innerHTML = `<img src="${url}" alt="Rendered output" style="max-width: 100%; border: 1px solid #e2e8f0;">`;
+function clearPreview() {
+    previewDiv.innerHTML = '<div style="color: #64748b;">Rendering… please wait</div>';
 }
 
-// Poll /result/{jobID} until completed or failed
-async function pollResult(jobID, format) {
-    const maxAttempts = 15; 
-    let attempts = 0;
+function errorPreview() {
+    previewDiv.innerHTML = `<div style="color: #b91c1c;">Render failed: ${err.message}</div>`;
 
-    const poll = async () => {
-        attempts++;
-        try {
-            const resp = await fetch(`/result/${jobID}`);
-            if (resp.status === 200) {
-                const data = await resp.json();
-                // Success – we have a presigned URL
-                if (data.url) {
-                    setStatus('Rendering complete!');
-                    if (format === 'png') {
-                        displayPNG(data.url);
-                    } else {
-                        displayPDF(data.url);
-                    }
-                    setLoading(false);
-                    return;
-                } else {
-                    throw new Error('No URL in response');
-                }
-            } else if (resp.status === 202) {
-                // Still processing
-                setStatus(`Rendering in progress...`);
-                if (attempts < maxAttempts) {
-                    setTimeout(poll, 1000); // poll every 1 seconds
-                } else {
-                    throw new Error('Timeout waiting for render result');
-                }
-                return;
-            } else {
-                // Other error (4xx, 5xx)
-                const errorText = await resp.text();
-                throw new Error(`Server error: ${resp.status} - ${errorText}`);
-            }
-        } catch (err) {
-            setStatus(`Failed: ${err.message}`, true);
-            setLoading(false);
-            previewDiv.innerHTML = `<div style="color: #b91c1c;">Render failed: ${err.message}</div>`;
-        }
-    };
-
-    poll();
 }
 
+
+
+// // Poll /result/{jobID} until completed or failed
+// async function pollResult(jobID, format) {
+//     const maxAttempts = 15;
+//     let attempts = 0;
+
+//     const poll = async () => {
+//         attempts++;
+//         try {
+//             const resp = await fetch(`/result/${jobID}`);
+//             if (resp.status === 200) {
+//                 const data = await resp.json();
+//                 // Success – we have a presigned URL
+//                 if (data.url) {
+//                     setStatus('Rendering complete!');
+//                     if (format === 'png') {
+//                         displayPNG(data.url);
+//                     } else {
+//                         displayPDF(data.url);
+//                     }
+//                     setLoading(false);
+//                     return;
+//                 } else {
+//                     throw new Error('No URL in response');
+//                 }
+//             } else if (resp.status === 202) {
+//                 // Still processing
+//                 setStatus(`Rendering in progress...`);
+//                 if (attempts < maxAttempts) {
+//                     setTimeout(poll, 1000); // poll every 1 seconds
+//                 } else {
+//                     throw new Error('Timeout waiting for render result');
+//                 }
+//                 return;
+//             } else {
+//                 // Other error (4xx, 5xx)
+//                 const errorText = await resp.text();
+//                 throw new Error(`Server error: ${resp.status} - ${errorText}`);
+//             }
+//         } catch (err) {
+//             setStatus(`Failed: ${err.message}`, true);
+//             setLoading(false);
+//             errorPreview()
+//         }
+//     };
+
+//     poll();
+// }
 
 
 // Submit handler
@@ -95,7 +120,7 @@ form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     // Clear previous preview and set loading state
-    previewDiv.innerHTML = '<div style="color: #64748b;">Rendering… please wait</div>';
+    clearPreview()
     setLoading(true);
     setStatus('Submitting job...');
 
@@ -105,7 +130,7 @@ form.addEventListener('submit', async (e) => {
     formData.append('format', formatSelect.value);
 
     try {
-        const response = await fetch('/render', {
+        const response = await fetch('/api/jobs', {
             method: 'POST',
             body: formData
         });
@@ -121,12 +146,51 @@ form.addEventListener('submit', async (e) => {
             throw new Error('No job ID returned from server');
         }
 
-        setStatus(`Job submitted (ID: ${jobID}). Waiting for render...`);
+        setStatus(`Job submitted. Waiting for render...`);
         // Start polling with the selected format
-        pollResult(jobID, formatSelect.value);
+        streamJob(jobID)
+        // pollResult(jobID, formatSelect.value);
     } catch (err) {
         setStatus(`Submission failed: ${err.message}`, true);
         setLoading(false);
-        previewDiv.innerHTML = `<div style="color: #b91c1c;">Error: ${err.message}</div>`;
+        errorPreview()
     }
 });
+
+function streamJob(jobID) {
+    const es = new EventSource(`/api/jobs/${jobID}/stream`);
+
+
+    es.addEventListener('info', (event) => {
+        const data = JSON.parse(event.data);
+
+        switch (data.status) {
+            case JobStatusQueued:
+                setStatus('Queued...')
+                break;
+            case JobStatusProcessing:
+                setStatus('Processing...')
+                break;
+            // case JobStatusUploading:
+            //     setStatus('Uploading...')
+            //     break;
+            case JobStatusFailed:
+                setStatus(`Error: ${data.error}`, true)
+                setLoading(false);
+                errorPreview()
+                es.close()
+                break;
+            case JobStatusCompleted:
+                setStatus('Done');
+                displayRender(data.result_url)
+                setLoading(false);
+                es.close()
+                break;
+        }
+    })
+    es.onerror =() => {
+        if (es.readyState === EventSource.CLOSED){
+            setStatus("Connection lost. ???", true)
+        }
+    }
+}

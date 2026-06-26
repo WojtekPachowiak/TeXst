@@ -5,7 +5,7 @@ WORKDIR /app
 COPY restapi/go.mod restapi/go.sum .
 RUN go mod download
 
-COPY storage/go.mod storage/go.sum .
+COPY shared/go.mod shared/go.sum .
 RUN go mod download
 
 COPY . .

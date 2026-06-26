@@ -5,19 +5,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
-	"path/filepath"
+	"shared"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
-func renderHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+func submitJobHandler(w http.ResponseWriter, r *http.Request) {
+	// if r.Method != http.MethodPost {
+	// 	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	// 	return
+	// }
 
 	engine := r.FormValue("engine")
 	source := r.FormValue("source")
@@ -50,7 +51,6 @@ func renderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var targetStream string
-
 	switch engine {
 	case "latex":
 		targetStream = env.STREAM_LATEX
@@ -69,55 +69,62 @@ func renderHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}).Result()
 	if err != nil {
+		slog.Error("failed to enque job", "error", err, "job_id", jobID)
 		http.Error(w, "Failed to enqueue job", http.StatusInternalServerError)
 		return
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339) //2006-01-02T15:04:05Z07:00
-	status := map[string]any{
-		"status":     "queued",
-		"created_at": now,
-		"updated_at": now,
-		"engine":     engine,
-		"format":     format,
-		"result_url": "",
-		"error":      "",
+	status := JobInfo{
+		Status:    JobStatusQueued,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Engine:    engine,
+		Format:    format,
+		ResultURL: "",
+		Error:     "",
 	}
-	err = redisClient.HSet(ctx, fmt.Sprintf("job:%s", jobID), status).Err()
+
+	err = redisClient.HSet(ctx, fmt.Sprintf("job:%s", jobID),
+		status.ToMap()).Err()
 	if err != nil {
 		log.Printf("Warning: failed to save initial status: %v", err)
 	}
 
+	JobsSubmitted.WithLabelValues(job.Engine, job.Format).Inc()
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"job_id": jobID,
-		// "status": "/status/" + jobID,
+		"status": string(JobStatusQueued),
 	})
 
 }
 
-func statusHandler(w http.ResponseWriter, r *http.Request) {
+func getJobInfoHandler(w http.ResponseWriter, r *http.Request) {
+	jobID := r.PathValue("id")
 
-	jobID := filepath.Base(r.URL.Path)
+	// jobID := filepath.Base(r.URL.Path)
 	if jobID == "" {
-		http.Error(w, "Missing job ID", http.StatusBadRequest)
+		http.Error(w, "Couldn't extract the job's ID", http.StatusBadRequest)
 		return
 	}
 
 	ctx := context.Background()
 
-	resp, err := getJobStatusStruct(ctx, jobID)
+	resp, err := getJobInfo(ctx, jobID)
 	if err != nil {
-		http.Error(w, "Could not get job status", http.StatusNotFound)
+		http.Error(w, "Could not get job info", http.StatusNotFound)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
 
-func resultHandler(w http.ResponseWriter, r *http.Request) {
+func streamJobHandler(w http.ResponseWriter, r *http.Request) {
+	jobID := r.PathValue("id")
 
-	jobID := filepath.Base(r.URL.Path)
+	// jobID := filepath.Base(r.URL.Path)
 	if jobID == "" {
 		http.Error(w, "Missing job ID", http.StatusBadRequest)
 		return
@@ -125,41 +132,111 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 
-	status, err := getJobStatusField(ctx, jobID)
-	if err != nil {
-		http.Error(w, "Could not get job status", http.StatusInternalServerError)
-		return
-	}
-	if status == "failed" {
-		http.Error(w, fmt.Sprintf("Job not completed (status: %s)", status), http.StatusInternalServerError)
-		return
-	} else if status != "completed" {
-		http.Error(w, fmt.Sprintf("Job not completed (status: %s)", status), http.StatusAccepted)
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 		return
 	}
 
-	jobStatus, err := getJobStatusStruct(ctx, jobID)
-	if err != nil {
-		http.Error(w, "Could not get job status", http.StatusInternalServerError)
-		return
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no") //nginx hint
+	w.WriteHeader(http.StatusOK)
+	flusher.Flush()
+
+	sub := redisClient.Subscribe(ctx, env.REDIS_PUBSUB_CHANNEL_PREFIX+jobID)
+	defer sub.Close()
+	ch := sub.Channel()
+
+	if jobInfo, err := getJobInfo(ctx, jobID); err == nil {
+		d, _ := json.Marshal(jobInfo.ToMap())
+		// TODO: err handle
+		fmt.Fprintf(w, "event: info\ndata: %s\n\n", d)
+		flusher.Flush()
+
+		if jobInfo.Status == JobStatusCompleted || jobInfo.Status == JobStatusFailed {
+			return //nothing more to stream
+		}
 	}
 
-	if jobStatus.ResultURL == "" {
-		http.Error(w, "Could not locate the result's location", http.StatusInternalServerError)
-		return
+	// ping every 15 seconds
+	keepalive := time.NewTicker(15 * time.Second)
+	defer keepalive.Stop()
+
+	timeout := time.NewTimer(5 * time.Minute)
+	defer timeout.Stop()
+
+	for {
+		select {
+		case <-timeout.C:
+			pubSubMsg := JobPubSubMsg{
+				ID:        jobID,
+				Status:    JobStatusFailed,
+				Error:     "timed out waiting for worker",
+				ResultURL: "",
+			}
+			d, _ := json.Marshal(pubSubMsg.ToMap())
+			fmt.Fprintf(w, "event: info\ndata: %s\n\n", d)
+			flusher.Flush()
+			return
+
+		case msg, ok := <-ch:
+			if !ok {
+				return
+			}
+			fmt.Fprintf(w, "event: info\ndata: %s\n\n", msg.Payload)
+			flusher.Flush()
+
+			var pubSubMsg JobPubSubMsg
+			if json.Unmarshal([]byte(msg.Payload), &pubSubMsg) == nil && (pubSubMsg.Status == JobStatusCompleted || pubSubMsg.Status == shared.JobStatusFailed) {
+				return
+			}
+
+		case <-keepalive.C:
+			fmt.Fprint(w, ": ping\n\n")
+			flusher.Flush()
+
+		case <-ctx.Done():
+			return //client disconnected
+		}
 	}
 
-	objectName := jobStatus.ResultURL
-	presignedURL, err := getPresignedURL(ctx, objectName)
-	if err != nil {
-		http.Error(w, "Could not generate presigned URL", http.StatusInternalServerError)
-		log.Printf("Error: %s", err)
-		return
-	}
+	// status, err := getJobStatus(ctx, jobID)
+	// if err != nil {
+	// 	http.Error(w, "Could not get job status", http.StatusInternalServerError)
+	// 	return
+	// }
+	// if status == JobStatusFailed {
+	// 	http.Error(w, fmt.Sprintf("Job not completed (status: %s)", status), http.StatusInternalServerError)
+	// 	return
+	// } else if status != JobStatusCompleted {
+	// 	http.Error(w, fmt.Sprintf("Job not completed (status: %s)", status), http.StatusAccepted)
+	// 	return
+	// }
 
-	resp := map[string]string{"url": presignedURL}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	// jobInfo, err := getJobInfo(ctx, jobID)
+	// if err != nil {
+	// 	http.Error(w, "Could not get job info", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// if jobInfo.ResultURL == "" {
+	// 	http.Error(w, "Could not locate the result's location", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// objectName := jobInfo.ResultURL
+	// presignedURL, err := getPresignedURL(ctx, objectName)
+	// if err != nil {
+	// 	http.Error(w, "Could not generate presigned URL", http.StatusInternalServerError)
+	// 	log.Printf("Error: %s", err)
+	// 	return
+	// }
+
+	// resp := map[string]string{"url": presignedURL}
+	// w.Header().Set("Content-Type", "application/json")
+	// json.NewEncoder(w).Encode(resp)
 
 }
 

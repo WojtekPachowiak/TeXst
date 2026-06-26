@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,35 +14,72 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/minio/minio-go/v7"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 
-	"storage"
+	"shared"
 )
 
-type Job struct {
-	ID     string `json:"id"`
-	Engine string `json:"engine"`
-	Source string `json:"source"`
-	Format string `json:"format"`
-}
+type Job = shared.Job
+type JobInfo = shared.JobInfo
+type JobUpdate = shared.JobUpdate
+type JobPubSubMsg = shared.JobPubSubMsg
+type JobStatus = shared.JobStatus
+
+const (
+	JobStatusCompleted  = shared.JobStatusCompleted
+	JobStatusFailed     = shared.JobStatusFailed
+	JobStatusProcessing = shared.JobStatusProcessing
+	JobStatusUploading  = shared.JobStatusUploading
+	JobStatusQueued     = shared.JobStatusQueued
+)
 
 var redisClient *redis.Client
 var minioClient *minio.Client
+var minioPresigner *minio.Client
 
 // const streamName = "rendering-jobs"
 // const consumerGroup = "workers"
 // const consumerName = "worker-1" // each worker should have a unique name
 
 type Environment struct {
-	REDIS_ADDR        string
-	CONSUMER_GROUP    string
-	CONSUMER_NAME     string
-	STREAM_NAME       string
-	WORKER_ENGINE     string
-	MINIO_BUCKET_NAME string
+	REDIS_ADDR                  string
+	CONSUMER_GROUP              string
+	CONSUMER_NAME               string
+	STREAM_NAME                 string
+	WORKER_ENGINE               string
+	MINIO_BUCKET_NAME           string
+	REDIS_PUBSUB_CHANNEL_PREFIX string
 }
 
 var env Environment
+
+var (
+	// <!-- JobsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
+	// 	Name: "worker_jobs_processed_total",
+	// 	Help: "Jobs processed by format and outcome",
+	// }, []string{"format", "status"}) // status: success|error|timeout -->
+
+	RenderDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "worker_render_duration_seconds",
+		Help:    "Time spent invoking pandoc/typst/latex",
+		Buckets: []float64{0.5, 1, 2, 5, 10, 20, 30, 60, 120},
+	}, []string{"engine", "format", "status"})
+
+	UploadDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "worker_uploadtostorage_duration_seconds",
+		Help:    "Time spent uploading to storage (minio)",
+		Buckets: []float64{0.5, 1, 2, 5, 10, 20, 30, 60, 120},
+	}, []string{"engine", "format", "status"})
+
+	// <!-- QueueWait = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	// 	Name:    "worker_queue_wait_seconds",
+	// 	Help:    "Time between enqueue and dequeue",
+	// 	Buckets: prometheus.DefBuckets,
+	// }, []string{"format"}) -->
+)
 
 func main() {
 	err := envconfig.Process("", &env)
@@ -52,8 +90,8 @@ func main() {
 	redisClient = redis.NewClient(&redis.Options{
 		Addr: env.REDIS_ADDR,
 	})
-	
-	minioClient, _, err = storage.InitMinio()
+
+	minioClient, minioPresigner, err = shared.NewMinioClient(true)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -68,6 +106,12 @@ func main() {
 			log.Fatal("Failed to create consumer group:", err)
 		}
 	}
+
+	// start prometheus metrics server
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":9100", nil)
+	}()
 
 	os.MkdirAll("rendered", 0755)
 
@@ -92,8 +136,6 @@ func main() {
 
 		//TODO: czy dobrze, że funkcje tworzą własny ctx?
 
-		//TODO: czy potrzeba XAUTOCLAIM?
-
 		for _, stream := range streams {
 			for _, message := range stream.Messages {
 				jobID := message.Values["job_id"].(string)
@@ -116,37 +158,71 @@ func processMessage(jobID, jobDataStr string) error {
 
 	if job.Engine != env.WORKER_ENGINE {
 		err := fmt.Errorf("Worker received wrong job (engines do not match).")
-		log.Print("%s", err)
+		log.Printf("%s", err)
 		markJobFailed(jobID, "Invalid job engine")
 		return err
 	}
 
-	updateJobStatus(jobID, "processing", "", "")
+	updateJobInfo(jobID, JobStatusProcessing, "", "")
 
+	start := time.Now()
 	outputPath, err := renderDocument(job)
+	duration := time.Since(start).Seconds()
 	if err != nil {
 		log.Printf("Job %s failed: %v", jobID, err)
 		markJobFailed(jobID, err.Error())
+		RenderDuration.WithLabelValues(job.Engine, job.Format, "failure").Observe(duration)
 		return err
 	} else {
 		log.Printf("Job %s processed and awaits upload to storage", jobID)
-		updateJobStatus(jobID, "uploading", "", "")
+		RenderDuration.WithLabelValues(job.Engine, job.Format, "success").Observe(duration)
+		updateJobInfo(jobID, JobStatusUploading, "", "")
 	}
 
-	resultURL, err := uploadToMinIO(jobID, outputPath)
+	start = time.Now()
+	objectName, err := uploadToMinIO(jobID, outputPath)
+	duration = time.Since(start).Seconds()
 	if err != nil {
-		log.Printf("Job %s could not be upload to storage: %v", jobID, err)
+		log.Printf("Job %s could not be uploaded to storage: %v", jobID, err)
+		markJobFailed(jobID, err.Error())
+		UploadDuration.WithLabelValues(job.Engine, job.Format, "failure").Observe(duration)
+		return err
+	} else {
+		log.Printf("Job %s uploaded to storage", jobID)
+		UploadDuration.WithLabelValues(job.Engine, job.Format, "success").Observe(duration)
+	}
+
+	presignedURL, err := getPresignedURL(objectName)
+	if err != nil {
+		log.Printf("Job %s: failed to generate presignedURL: %v", jobID, err)
 		markJobFailed(jobID, err.Error())
 		return err
 	} else {
-		updateJobStatus(jobID, "completed", "", resultURL)
-		log.Printf("Job %s processed and uploaded to storage", jobID)
+		log.Printf("Job %s: generated presignedURL successfully", jobID)
 	}
+
+	updateJobInfo(jobID, JobStatusCompleted, "", presignedURL)
 
 	return nil
 }
 
+func getPresignedURL(objectName string) (string, error) {
+	bucketName := env.MINIO_BUCKET_NAME
+
+	expires := time.Duration(15) * time.Minute
+
+	ctx := context.Background()
+
+	presignedURL, err := minioPresigner.PresignedGetObject(ctx, bucketName, objectName, expires, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to generated presigned URL: %w", err)
+	}
+
+	return presignedURL.String(), nil
+}
+
 func renderDocument(job Job) (string, error) {
+
 	jobDir := filepath.Join("rendered", job.ID)
 	if err := os.MkdirAll(jobDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create job directory: %w", err)
@@ -208,21 +284,43 @@ func renderDocument(job Job) (string, error) {
 	return outputPath, nil
 }
 
-func updateJobStatus(jobID, status, errMsg, resultURL string) {
+func updateJobInfo(jobID string, status JobStatus, errMsg, resultURL string) {
 	ctx := context.Background()
-	updates := map[string]any{
-		"status":     status,
-		"updated_at": time.Now().UTC().Format(time.RFC3339),
-		"error":      errMsg,
-		"result_url": resultURL,
+
+	update := JobUpdate{
+		Status:    status,
+		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
+		Error:     errMsg,
+		ResultURL: resultURL,
 	}
-	if err := redisClient.HSet(ctx, fmt.Sprintf("job:%s", jobID), updates).Err(); err != nil {
+	
+	if err := redisClient.HSet(ctx, fmt.Sprintf("job:%s", jobID), update.ToMap()).Err(); err != nil {
 		log.Printf("Failed to update status for job %s: %v", jobID, err)
 	}
+
+	// Publish message to Redis Pub/Sub for restapi
+	msg := JobPubSubMsg{
+		ID:        jobID,
+		Status:    status,
+		Error:     errMsg,
+		ResultURL: resultURL,
+	}
+	// msg := map[string]any{
+	// 	"job_id":     jobID,
+	// 	"status":     status,
+	// 	"error":      errMsg,
+	// 	"result_url": resultURL,
+	// }
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("Failed to marshal job status message for job %s: %v", jobID, err)
+		return
+	}
+	redisClient.Publish(ctx, fmt.Sprintf("%s%s", env.REDIS_PUBSUB_CHANNEL_PREFIX, jobID), msgBytes)
 }
 
 func markJobFailed(jobID, errMsg string) {
-	updateJobStatus(jobID, "failed", errMsg, "")
+	updateJobInfo(jobID, JobStatusFailed, errMsg, "")
 }
 
 func acknowledgeMessage(messageID string) {

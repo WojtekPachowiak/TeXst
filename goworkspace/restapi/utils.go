@@ -3,56 +3,33 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"net/http"
-	"time"
 )
 
-func getPresignedURL(ctx context.Context, objectName string) (string, error) {
-	bucketName := env.MINIO_BUCKET_NAME
 
-	expires := time.Duration(15) * time.Minute
-
-	presignedURL, err := minioPresigner.PresignedGetObject(ctx, bucketName, objectName, expires, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to generated presigned URL: %w", err)
-	}
-
-	return presignedURL.String(), nil
-}
-
-func getJobStatusStruct(ctx context.Context, jobID string) (*JobStatus, error) {
-	statusMap, err := redisClient.HGetAll(ctx, fmt.Sprintf("job:%s", jobID)).Result()
-	if err != nil || len(statusMap) == 0 {
+func getJobInfo(ctx context.Context, jobID string) (*JobInfo, error) {
+	infoMap, err := redisClient.HGetAll(ctx, fmt.Sprintf("job:%s", jobID)).Result()
+	if err != nil || len(infoMap) == 0 {
 		return nil, fmt.Errorf("Job not found")
-
 	}
 
-	jobStatus := JobStatus{
-		Status:    statusMap["status"],
-		CreatedAt: statusMap["created_at"],
-		UpdatedAt: statusMap["updated_at"],
-		Error:     statusMap["error"],
-		ResultURL: statusMap["result_url"],
+	jobInfo := JobInfo{
+		Status:    JobStatus(infoMap["status"]),
+		CreatedAt: infoMap["created_at"],
+		Engine:    infoMap["engine"],
+		Format:    infoMap["format"],
+		UpdatedAt: infoMap["updated_at"],
+		Error:     infoMap["error"],
+		ResultURL: infoMap["result_url"],
 	}
 
-	return &jobStatus, nil
+	return &jobInfo, nil
 }
 
-func getJobStatusField(ctx context.Context, jobID string) (string, error) {
+func getJobStatus(ctx context.Context, jobID string) (string, error) {
 	status, err := redisClient.HGet(ctx, fmt.Sprintf("job:%s", jobID), "status").Result()
 	if err != nil {
 		return "", fmt.Errorf("Job not found")
 	}
 
 	return status, nil
-}
-
-// =========================
-
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s %s", r.Method, r.URL.Path, r.RemoteAddr)
-		next.ServeHTTP(w, r)
-	})
 }

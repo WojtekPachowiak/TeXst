@@ -3,7 +3,7 @@ apiVersion: 1
 providers:
   - name: 'default'
     orgId: 1
-    folder: 'Services'
+    folder: ''
     type: file
     options: 
       path: /etc/grafana/dashboards
