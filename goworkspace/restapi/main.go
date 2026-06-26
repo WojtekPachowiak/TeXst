@@ -105,8 +105,8 @@ func main() {
 	mux.HandleFunc("/api/jobs", submitJobHandler)
 	mux.HandleFunc("/api/jobs/{id}", getJobInfoHandler)
 	mux.HandleFunc("/api/jobs/{id}/stream", streamJobHandler)
-	// wrappedMux := mainMiddleware(mux)
+	wrappedMux := mainMiddleware(mux)
 
 	log.Println("API listening on http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(":8080", wrappedMux))
 }

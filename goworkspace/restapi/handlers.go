@@ -189,7 +189,13 @@ func streamJobHandler(w http.ResponseWriter, r *http.Request) {
 			flusher.Flush()
 
 			var pubSubMsg JobPubSubMsg
-			if json.Unmarshal([]byte(msg.Payload), &pubSubMsg) == nil && (pubSubMsg.Status == JobStatusCompleted || pubSubMsg.Status == shared.JobStatusFailed) {
+			err := json.Unmarshal([]byte(msg.Payload), &pubSubMsg)
+			if err !=nil {
+				http.Error(w, "error parsing pubsub message", http.StatusInternalServerError)
+				return
+			}
+
+			if  (pubSubMsg.Status == JobStatusCompleted || pubSubMsg.Status == shared.JobStatusFailed) {
 				return
 			}
 

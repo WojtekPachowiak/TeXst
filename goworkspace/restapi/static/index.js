@@ -59,8 +59,8 @@ function clearPreview() {
     previewDiv.innerHTML = '<div style="color: #64748b;">Rendering… please wait</div>';
 }
 
-function errorPreview() {
-    previewDiv.innerHTML = `<div style="color: #b91c1c;">Render failed: ${err.message}</div>`;
+function errorPreview(errmsg) {
+    previewDiv.innerHTML = `<div style="color: #b91c1c;">Render failed: ${errmsg}</div>`;
 
 }
 
@@ -153,7 +153,7 @@ form.addEventListener('submit', async (e) => {
     } catch (err) {
         setStatus(`Submission failed: ${err.message}`, true);
         setLoading(false);
-        errorPreview()
+        errorPreview(err.message)
     }
 });
 
@@ -171,13 +171,13 @@ function streamJob(jobID) {
             case JobStatusProcessing:
                 setStatus('Processing...')
                 break;
-            // case JobStatusUploading:
-            //     setStatus('Uploading...')
-            //     break;
+            case JobStatusUploading:
+                setStatus('Uploading...')
+                break;
             case JobStatusFailed:
                 setStatus(`Error: ${data.error}`, true)
                 setLoading(false);
-                errorPreview()
+                errorPreview(data.error)
                 es.close()
                 break;
             case JobStatusCompleted:
