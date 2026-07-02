@@ -23,6 +23,11 @@ import(
 
 func mainMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user,err := getUserFromHeaders(r)
+		if err !=nil {
+			user = "UNKNOWN"
+		}
+
 		m := httpsnoop.CaptureMetrics(next,w,r)
 		// start := time.Now()
 		// wrapper := &ResponseWriterWrapper{w, http.StatusOK}
@@ -35,6 +40,6 @@ func mainMiddleware(next http.Handler) http.Handler {
 		HTTPRequests.WithLabelValues(r.Method, r.URL.Path, http.StatusText(code)).Inc()
 		HTTPDuration.WithLabelValues(r.Method, r.URL.Path).Observe(durationSeconds)
 
-		log.Printf("[%s] %s [%s] - %.4fs (status: %d)", r.Method, r.URL.Path, r.RemoteAddr, durationSeconds,code)
+		log.Printf("[%s] %s [%s] - %.4fs (status: %d)", r.Method, r.URL.Path, user, durationSeconds,code)
 	})
 }

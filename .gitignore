@@ -27,6 +27,7 @@ go.work.sum
 # env file
 .env
 
+
 # Editor/IDE
 # .idea/
 # .vscode/
@@ -382,3 +383,4 @@ TSWLatexianTemp*
 *.tex
 !Dockerfile.*
 !test.*
+*.secret.env

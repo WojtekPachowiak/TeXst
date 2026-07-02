@@ -3,8 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 )
 
+func getUserFromHeaders(r *http.Request) (string,error) {
+	user := r.Header.Get("X-Auth-Request-User")
+	if user == ""{
+		return "", fmt.Errorf("no authentication user header - is this route behind oauth2-proxy?")
+	}
+	return user, nil
+}
 
 func getJobInfo(ctx context.Context, jobID string) (*JobInfo, error) {
 	infoMap, err := redisClient.HGetAll(ctx, fmt.Sprintf("job:%s", jobID)).Result()

@@ -30,5 +30,9 @@ run-loadtest-6000-png-typst:
 redis-cli:
 	docker exec -it redis redis-cli
 
-hello:
-	echo 
+dcub:
+	docker compose up --build
+
+
+dcu:
+	docker compose up

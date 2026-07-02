@@ -53,13 +53,73 @@ services:
       exit 0;
       "
 
+  traefik:
+    image: traefik:v3.6
+    container_name: traefik
+    command: 
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      # - "--entrypoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      # - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+    container_name: oauth2-proxy
+    env_file:
+      - ./oauth2-proxy.secret.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.oauth2-proxy.rule=PathPrefix(`/oauth2/`)"
+      - "traefik.http.routers.oauth2-proxy.priority=20"
+      # - "traefik.http.routers.oauth2-proxy.entrypoints=websecure"
+      - "traefik.http.routers.oauth2-proxy.entrypoints=web"
+      - "traefik.http.services.oauth2-proxy.loadbalancer.server.port=4180"
+      - "traefik.http.middlewares.oauth2-auth.forwardauth.address=http://oauth2-proxy:4180/oauth2/auth"
+      - "traefik.http.middlewares.oauth2-auth.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.oauth2-auth.forwardauth.authResponseHeaders=X-Auth-Request-User,X-Auth-Request-Email,X-Auth-Request-Access-Token"
+      
+    depends_on:
+      - redis
+    restart: unless-stopped
+
   restapi:
     build:
       context: ./goworkspace
       dockerfile: Dockerfile.restapi
     container_name: restapi
-    ports: 
-      - "8080:8080"
+    labels:
+      - "traefik.enable=true"
+      # - "traefik.http.routers.restapi.rule=PathPrefix(`/api/`)"
+      # # - "traefik.http.routers.restapi.entrypoints=websecure"
+      # - "traefik.http.routers.restapi.entrypoints=web"
+      # - "traefik.http.routers.restapi.middlewares=oauth2-auth"
+      # - "traefik.http.services.restapi.loadbalancer.server.port=8080"
+      # - "traefik.http.services.restapi.loadbalancer.responseforwarding.flushinterval=100ms"
+      # API routes — protected by oauth2-proxy
+      - "traefik.http.routers.restapi-api.rule=PathPrefix(`/api/`)"
+      - "traefik.http.routers.restapi-api.entrypoints=web"
+      - "traefik.http.routers.restapi-api.middlewares=oauth2-auth"
+      - "traefik.http.routers.restapi-api.service=restapi-svc"
+      - "traefik.http.routers.restapi-api.priority=10"
+
+      # UI / static files — also protected, catch-all
+      - "traefik.http.routers.restapi-ui.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.restapi-ui.entrypoints=web"
+      - "traefik.http.routers.restapi-ui.middlewares=oauth2-auth"
+      - "traefik.http.routers.restapi-ui.service=restapi-svc"
+      - "traefik.http.routers.restapi-ui.priority=1"
+
+      # one shared service definition
+      - "traefik.http.services.restapi-svc.loadbalancer.server.port=8080"
+      - "traefik.http.services.restapi-svc.loadbalancer.responseforwarding.flushinterval=100ms"
+    # ports: 
+      # - "8080:8080"
     env_file:
       - ./goworkspace/restapi.env
       - ./goworkspace/storage.env
