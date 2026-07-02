@@ -60,10 +60,13 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
       # - "--entrypoints.websecure.address=:443"
     ports:
       - "80:80"
       # - "443:443"
+      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
@@ -80,10 +83,11 @@ services:
       # - "traefik.http.routers.oauth2-proxy.entrypoints=websecure"
       - "traefik.http.routers.oauth2-proxy.entrypoints=web"
       - "traefik.http.services.oauth2-proxy.loadbalancer.server.port=4180"
-      - "traefik.http.middlewares.oauth2-auth.forwardauth.address=http://oauth2-proxy:4180/oauth2/auth"
-      - "traefik.http.middlewares.oauth2-auth.forwardauth.trustForwardHeader=true"
-      - "traefik.http.middlewares.oauth2-auth.forwardauth.authResponseHeaders=X-Auth-Request-User,X-Auth-Request-Email,X-Auth-Request-Access-Token"
-      
+      - "traefik.http.middlewares.oauth2-auth.forwardAuth.address=http://oauth2-proxy:4180" #/oauth2/auth  will return 401 without any redirection
+      - "traefik.http.middlewares.oauth2-auth.forwardAuth.trustForwardHeader=true"
+      - "traefik.http.middlewares.oauth2-auth.forwardAuth.authResponseHeaders=X-Auth-Request-User,X-Auth-Request-Email,X-Auth-Request-Access-Token"
+      # - "traefik.http.middlewares.oauth2-auth.forwardAuth.authSigninURL=http://localhost/oauth2/start?rd=%2F"
+
     depends_on:
       - redis
     restart: unless-stopped
