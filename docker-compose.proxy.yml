@@ -1,0 +1,32 @@
+services:
+  traefik:
+    image: traefik:v3.6
+    container_name: traefik
+    command: 
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--api"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      # - "--entrypoints.websecure.address=:443"
+      # Redirect all plain HTTP to HTTPS
+      # - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      # - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      # Uncomment for automatic HTTPS via Let's Encrypt (needs a real public DNS name)
+      # - "--certificatesresolvers.le.acme.email=you@example.com"
+      # - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+      # - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+      # - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "8080:8080"
+      # - "443:443"
+    depends_on:
+      authentik-server:
+        condition: service_healthy
+      authentik-worker:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped

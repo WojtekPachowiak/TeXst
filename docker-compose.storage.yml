@@ -1,0 +1,45 @@
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001" --address=":9002"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio.rule=Host(`app.localhost.com`) && PathPrefix(`/rendered-documents/`)"
+      - "traefik.http.routers.minio.entrypoints=web"
+      # - "traefik.http.routers.minio.tls=false"
+      # - "traefik.http.routers.minio.tls.certresolver=le"
+      - "traefik.http.routers.minio.priority=13"
+      - "traefik.http.services.minio.loadbalancer.server.port=9002"
+      - "traefik.http.routers.minio.middlewares=authentik-auth"
+
+
+    ports:
+    #   - "9000:9000" # API port
+      - "9001:9001" # Console port
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:9002/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      /usr/bin/mc alias set myminio http://minio:9002 minioadmin minioadmin;
+      /usr/bin/mc mb set myminio/rendered-documents --ignore-existing;
+      # /usr/bin/mc anonymous set download myminio/rendered-documents;
+      exit 0;
+      "

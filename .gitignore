@@ -384,3 +384,5 @@ TSWLatexianTemp*
 !Dockerfile.*
 !test.*
 *.secret.env
+!README.md
+!go.work

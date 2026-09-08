@@ -3,19 +3,19 @@ FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
-COPY worker/go.mod worker/go.sum .
+COPY goworkspace/worker/go.mod goworkspace/worker/go.sum .
 RUN go mod download
 
-COPY shared/go.mod shared/go.sum .
+COPY goworkspace/shared/go.mod goworkspace/shared/go.sum .
 RUN go mod download
 
-COPY . .
+COPY ./goworkspace .
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -o work worker
 
 # Stage 2: Runtime image with pandoc/latex
-FROM pandoc/latex:3.9
+FROM pandoc/typst:3.9
 
 RUN apk add --no-cache imagemagick ghostscript
 

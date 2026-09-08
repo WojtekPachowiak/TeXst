@@ -1,0 +1,10 @@
+# docker-compose.volumes.yml
+volumes:
+  minio_data:
+  redisinsight-data:
+  postgres_data:
+  authentik_media:
+  authentik_certs:
+  authentik_templates:
+  grafana_data:
+  prometheus_data:

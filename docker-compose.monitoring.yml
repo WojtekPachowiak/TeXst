@@ -1,0 +1,91 @@
+services:
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: redisinsight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight-data:/data
+    environment:
+      REDISINSIGHT_ACCEPT_LICENSE: true
+      RI_APP_HOST: 0.0.0.0
+    depends_on:
+      - redis
+
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_EXPORTER_CHECK_STREAMS: stream:latex,stream:typst
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+
+  cadvisor: 
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    attach: false #prevent logging
+    container_name: cadvisor
+    privileged: true
+    # devices:
+    #   - /dev/kmsg:/dev/kmsg
+    ports: 
+      - "8081:8080"
+    volumes: 
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    # command:
+    #   - "--docker_only=true"
+    #   - "--store_container_labels=false"
+    #   - "--disable_root_cgroup_stats=true"
+    #   - "--disable_metrics=advtcp,cpuLoad,hugetlb,memory_numa,percpu,process,referenced_memory,resctrl,sched,tcp,udp"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    attach: false
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - restapi
+      - worker-latex
+      - worker-typst
+      - redis
+      - minio
+
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    attach: false
+    ports: 
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/dashboards
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  
+
+  mailpit:
+    image: axllent/mailpit:v1.30.4
+    container_name: mailpit
+    ports: 
+      - "8025:8025"
+    restart: unless-stopped

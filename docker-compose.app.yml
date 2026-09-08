@@ -1,0 +1,55 @@
+
+services:
+
+  restapi:
+    build:
+      context: .
+      dockerfile: Dockerfile.restapi
+    container_name: restapi
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.restapi.rule=Host(`app.localhost.com`)"
+      - "traefik.http.routers.restapi.entrypoints=web"
+      - "traefik.http.routers.restapi.priority=10"
+      - "traefik.http.routers.restapi.middlewares=authentik-auth"
+      - "traefik.http.services.restapi.loadbalancer.server.port=8080"
+      - "traefik.http.services.restapi.loadbalancer.responseforwarding.flushinterval=100ms"
+    # ports: 
+      # - "8080:8080"
+    env_file:
+      - ./envs/restapi.env
+      - ./envs/storage.env
+    # volumes: #ONLY FOR DEV
+      # - ~/Programming/tex-typst-rendering-cluster/goworkspace/restapi/static:/app/static
+    depends_on:
+      - redis
+      - minio
+    restart: unless-stopped
+
+  worker-typst:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker-typst
+    container_name: worker-typst
+    env_file:
+      - ./envs/worker.env
+      - ./envs/worker-typst.env
+      - ./envs/storage.env
+    depends_on:
+      - redis
+      - minio
+    restart: unless-stopped
+
+  worker-latex:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker-latex
+    container_name: worker-latex
+    env_file:
+      - ./envs/worker.env
+      - ./envs/worker-latex.env
+      - ./envs/storage.env
+    depends_on:
+      - redis
+      - minio
+    restart: unless-stopped

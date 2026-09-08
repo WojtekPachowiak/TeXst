@@ -42,7 +42,7 @@ func NewMinioClient(withPresigner bool) (*minio.Client, *minio.Client, error) {
 
 	var presigner *minio.Client
 	if withPresigner {
-		// this client's only purpose is to generate presigned URLs (it doesnt need internet access; it cant reach localhost:9000)
+		// this client's only purpose is to generate presigned URLs (it doesnt need internet access; it cant reach localhost:9002)
 		presigner, err = minio.New(env.MINIO_EXTERNAL_ENDPOINT, &minio.Options{
 			Creds:  credentials.NewStaticV4(env.MINIO_ACCESS_KEY, env.MINIO_SECRET_KEY, ""),
 			Secure: env.MINIO_USE_SSL == "true",
