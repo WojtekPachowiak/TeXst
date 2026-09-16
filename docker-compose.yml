@@ -1,0 +1,8 @@
+include:
+  - path: docker-compose.app.yml
+  - path: docker-compose.auth.yml
+  - path: docker-compose.databases.yml
+  - path: docker-compose.monitoring.yml
+  - path: docker-compose.proxy.yml
+  - path: docker-compose.storage.yml
+  - path: docker-compose.volumes.yml

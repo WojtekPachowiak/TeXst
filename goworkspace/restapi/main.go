@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"shared"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/minio/minio-go/v7"
@@ -12,15 +13,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"shared"
 )
 
-type Job = shared.Job
-type JobInfo = shared.JobInfo
-type JobUpdate = shared.JobUpdate
-type JobPubSubMsg = shared.JobPubSubMsg
-type JobStatus = shared.JobStatus
+type (
+	Job          = shared.Job
+	JobInfo      = shared.JobInfo
+	JobUpdate    = shared.JobUpdate
+	JobPubSubMsg = shared.JobPubSubMsg
+	JobStatus    = shared.JobStatus
+)
 
 const (
 	JobStatusCompleted  = shared.JobStatusCompleted
@@ -30,8 +31,10 @@ const (
 	JobStatusQueued     = shared.JobStatusQueued
 )
 
-var redisClient *redis.Client
-var minioClient *minio.Client
+var (
+	redisClient *redis.Client
+	minioClient *minio.Client
+)
 
 // const (
 // 	streamLatex = "stream:latex"

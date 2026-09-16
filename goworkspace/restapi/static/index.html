@@ -2,66 +2,69 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tex-typst-rendering-cluster</title>
-    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
-    <link rel="stylesheet" href="index.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tex-typst-rendering-cluster</title>
+  <form action="http://auth.localhost.com/flows/-/default/invalidation/">
+    <input type="submit" value="Logout" />
+  </form>
+  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  <link rel="stylesheet" href="index.css">
 
 </head>
 
 <body>
 
-    <div class="container">
-        <div class="editor-pane">
-            <h2><strong>tex-typst-rendering-cluster</strong> <small>by WP</small></h2>
-            <textarea id="source" placeholder="Write your LaTeX or Typst document here...">\documentclass{article}
-\usepackage{amsmath}
-\begin{document}
-\title{Hello World}
-\author{You}
-\maketitle
+  <div class="container">
+    <div class="editor-pane">
+      <h2><strong>tex-typst-rendering-cluster</strong> <small>by WP</small></h2>
+      <textarea id="source" placeholder="Write your LaTeX or Typst document here...">\documentclass{article}
+        \usepackage{amsmath}
+        \begin{document}
+        \title{Hello World}
+        \author{You}
+        \maketitle
 
-\[
-E = mc^2
-\]
+        \[
+        E = mc^2
+        \]
 
-\end{document}</textarea>
+        \end{document}</textarea>
 
-            <form id="renderForm">
-                <div class="toolbar">
-                    <select id="engine">
-                        <option value="latex">LaTeX (pdflatex)</option>
-                        <option value="typst">Typst</option>
-                    </select>
-                    <select id="format">
-                        <option value="pdf">.pdf</option>
-                        <option value="png">.png</option>
-                    </select>
-                    <button type="submit" id="submitBtn">
-                        <span class="btn-text">Render</span>
-                    </button>
-                    <div id="spinner" class="spinner" style="display: none;"></div>
-                </div>
-            </form>
-            <div id="status" class="status">
-                1. LaTeX requires a full document with \begin{document} and preamble. <br>
-                2. Typst can render plain text without writing any commands.<br>
-                3. If you want .png output, your text must be at most 1 page long. <br>
-                4. The error handling is scarce, sorry!
-                
-            </div>
+      <form id="renderForm">
+        <div class="toolbar">
+          <select id="engine">
+            <option value="latex">LaTeX (pdflatex)</option>
+            <option value="typst">Typst</option>
+          </select>
+          <select id="format">
+            <option value="pdf">.pdf</option>
+            <option value="png">.png</option>
+          </select>
+          <button type="submit" id="submitBtn">
+            <span class="btn-text">Render</span>
+          </button>
+          <div id="spinner" class="spinner" style="display: none;"></div>
         </div>
+      </form>
+      <div id="status" class="status">
+        1. LaTeX requires a full document with \begin{document} and preamble. <br>
+        2. Typst can render plain text without writing any commands.<br>
+        3. If you want .png output, your text must be at most 1 page long. <br>
+        4. The error handling is scarce, sorry!
 
-        <div class="preview-pane">
-            <!-- <h3>📑 Preview</h3> -->
-            <div id="preview" class="pdf-preview">
-                <div style="color: #64748b;">Click "Render" to see output here</div>
-            </div>
-        </div>
+      </div>
     </div>
+
+    <div class="preview-pane">
+      <!-- <h3>📑 Preview</h3> -->
+      <div id="preview" class="pdf-preview">
+        <div style="color: #64748b;">Click "Render" to see output here</div>
+      </div>
+    </div>
+  </div>
 </body>
-    <script src="index.js"></script>
+<script src="index.js"></script>
 
 
 </html>
