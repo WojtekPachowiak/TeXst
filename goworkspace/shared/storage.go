@@ -20,14 +20,14 @@ type Environment struct {
 var env Environment
 
 func NewMinioClient(withPresigner bool) (*minio.Client, *minio.Client, error) {
-
 	if err := envconfig.Process("", &env); err != nil {
 		return nil, nil, err
 	}
 
 	client, err := minio.New(env.MINIO_INTERNAL_ENDPOINT, &minio.Options{
 		Creds:  credentials.NewStaticV4(env.MINIO_ACCESS_KEY, env.MINIO_SECRET_KEY, ""),
-		Secure: env.MINIO_USE_SSL == "true",
+		Secure: false,
+		// Secure: env.MINIO_USE_SSL == "true",
 		Region: "us-east-1",
 		// BucketLookup: minio.BucketLookupPath,
 	})

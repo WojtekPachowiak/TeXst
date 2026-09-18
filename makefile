@@ -53,5 +53,9 @@ openwww:
 			 http://localhost:8080 \
 			 http://localhost:80 \
 
+
+tailwindcss:
+	tailwindcss -i /home/wojtekp/Programming/tex-typst-rendering-cluster/goworkspace/restapi/static/input.css -o /home/wojtekp/Programming/tex-typst-rendering-cluster/goworkspace/restapi/static/output.css --watch
+
 # dcu:
 # 	docker compose up

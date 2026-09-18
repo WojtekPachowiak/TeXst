@@ -1,7 +1,6 @@
 // render.js – Vanilla JS polling for async rendering
 
 const form = document.getElementById('renderForm');
-const sourceTextarea = document.getElementById('source');
 const engineSelect = document.getElementById('engine');
 const formatSelect = document.getElementById('format');
 const submitBtn = document.getElementById('submitBtn');
@@ -17,10 +16,22 @@ const JobStatusCompleted = "completed"
 
 
 
+// code editor
+var codeEditor = CodeMirror.fromTextArea(document.getElementById('source'), {
+    lineNumbers: true,
+    mode: 'stex',
+    theme: 'ayu-dark',
+    width: "100%",
+    heighg : "100%",
+    // extraKeys: {"F11": toggleFullscreenEditing, "Esc": toggleFullscreenEditing},
+
+});
+codeEditor.setSize("100%", "100%");
+
 // Helper: show status message (can be error or info)
 function setStatus(message, isError = false) {
     statusDiv.innerHTML = message;
-    statusDiv.style.color = isError ? '#b91c1c' : '#475569';
+    statusDiv.style.color = isError ? 'red' : 'unset';
 }
 
 // Helper: show/hide spinner
@@ -29,11 +40,13 @@ function setLoading(loading) {
         spinner.style.display = 'inline-block';
         submitBtn.disabled = true;
         formatSelect.disabled = true;
+        engineSelect.disabled = true;
         submitBtn.querySelector('.btn-text').style.opacity = '0.5';
     } else {
         spinner.style.display = 'none';
         submitBtn.disabled = false;
         formatSelect.disabled = false;
+        engineSelect.disabled=false;
         submitBtn.querySelector('.btn-text').style.opacity = '1';
     }
 }
@@ -45,22 +58,22 @@ function displayRender(url) {
     let format = formatSelect.value;
 
     if (format === "png"){
-        previewDiv.innerHTML = `<img src="${url}" alt="Rendered output" style="max-width: 100%; border: 1px solid #e2e8f0;">`;
+        previewDiv.innerHTML = `<img src="${url}" alt="Rendered output" style="max-width: 100%;">`;
     }
     
     if (format === "pdf"){
-        previewDiv.innerHTML = `<object data="${url}" type="application/pdf" width="100%" height="100%" style="min-height: 500px;">
+        previewDiv.innerHTML = `<object data="${url}" type="application/pdf" width="100%" height="100%" style="min-height: 500px; height: stretch">
             <p>Your browser cannot display PDFs. <a href="${url}">Download</a></p>
         </object>`;
     }
 }
 
 function clearPreview() {
-    previewDiv.innerHTML = '<div style="color: #64748b;">Rendering… please wait</div>';
+    previewDiv.innerHTML = '<div>Rendering… please wait</div>';
 }
 
 function errorPreview(errmsg) {
-    previewDiv.innerHTML = `<div style="color: #b91c1c;">Render failed: ${errmsg}</div>`;
+    previewDiv.innerHTML = `<div style="color: red;">Render failed: ${errmsg}</div>`;
 
 }
 
@@ -126,7 +139,7 @@ form.addEventListener('submit', async (e) => {
 
     const formData = new FormData();
     formData.append('engine', engineSelect.value);
-    formData.append('source', sourceTextarea.value);
+    formData.append('source', codeEditor.getValue());
     formData.append('format', formatSelect.value);
 
     try {

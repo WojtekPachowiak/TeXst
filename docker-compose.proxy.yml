@@ -2,31 +2,50 @@ services:
   traefik:
     image: traefik:v3.6
     container_name: traefik
-    command: 
+    command:
+      - "--providers.file.directory=/etc/traefik/dynamic" 
+      - "--providers.file.watch=true" 
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--api"
       - "--api.insecure=true"
       - "--api.dashboard=true"
-      # - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.address=:443"
       # Redirect all plain HTTP to HTTPS
-      # - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      # - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
       # Uncomment for automatic HTTPS via Let's Encrypt (needs a real public DNS name)
       # - "--certificatesresolvers.le.acme.email=you@example.com"
       # - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
       # - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
       # - "--log.level=INFO"
+      
+      #       # 4. System & Access Logs
+      # - "--log.level=INFO"
+      # - "--log.filePath=/var/log/traefik/traefik.log"
+      # - "--accesslog=true"
+      # - "--accesslog.filePath=/var/log/traefik/access.log"
+      # - "--accesslog.format=json"
+
+      # - "--tracing=true"
+      
+      # 5. Prometheus Metrics
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.addEntryPointsLabels=true"
+      - "--metrics.prometheus.addRoutersLabels=true"
+      - "--metrics.prometheus.addServicesLabels=true"
     ports:
       - "80:80"
       - "8080:8080"
-      # - "443:443"
+      - "443:443"
     depends_on:
       authentik-server:
         condition: service_healthy
       authentik-worker:
         condition: service_healthy
     volumes:
+      - ./certs:/certs:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped

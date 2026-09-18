@@ -8,16 +8,17 @@ services:
     command: server
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.authentik.rule=Host(`auth.localhost.com`)"
-      - "traefik.http.routers.authentik.entrypoints=web"
-      # - "traefik.http.routers.authentik.tls=false"
+      - "traefik.http.routers.authentik.rule=Host(`auth.texstwojtek.com`)"
+      - "traefik.http.routers.authentik.entrypoints=websecure"
+      - "traefik.http.routers.authentik.tls=true"
       # - "traefik.http.routers.authentik.tls.certresolver=le"
       - "traefik.http.routers.authentik.priority=30"
       - "traefik.http.routers.authentik.service=authentik-svc"
 
 
-      - "traefik.http.routers.authentik-outpost.rule=Host(`app.localhost.com`) && PathPrefix(`/outpost.goauthentik.io/`)"
-      - "traefik.http.routers.authentik-outpost.entrypoints=web"
+      - "traefik.http.routers.authentik-outpost.rule=Host(`app.texstwojtek.com`) && PathPrefix(`/outpost.goauthentik.io/`)"
+      - "traefik.http.routers.authentik-outpost.entrypoints=websecure"
+      - "traefik.http.routers.authentik-outpost.tls=true"
       - "traefik.http.routers.authentik-outpost.priority=20"
       - "traefik.http.routers.authentik-outpost.service=authentik-svc"
 
@@ -48,7 +49,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 100s
+      start_period: 3m
     restart: unless-stopped
 
 

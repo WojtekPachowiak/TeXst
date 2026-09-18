@@ -23,6 +23,10 @@ scrape_configs:
     static_configs:
       - targets: ["cadvisor:8080"]
 
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['traefik:8080'] # Replace with your Traefik host and port
+
   # - job_name: minio
   #   metrics_path: /minio/v2/metrics/cluster
   #   bearer_token: "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoiUTNBTTNVUTg2N1NQUVFBNDNQMkYiLCJleHAiOjQ5MzUyMjQzMzR9.LmTXjxudb6ls7-wT5VBpxl-RkhsT7SE7vSspb8CzFaw4fFUuZLE6efybfqw5Qv4gpuKs-uKB1-46ww1lZPs_BA"

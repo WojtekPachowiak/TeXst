@@ -4,67 +4,129 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>tex-typst-rendering-cluster</title>
-  <form action="http://auth.localhost.com/flows/-/default/invalidation/">
-    <input type="submit" value="Logout" />
-  </form>
+  <title>TeXst</title>
   <script src="https://unpkg.com/htmx.org@2.0.0"></script>
-  <link rel="stylesheet" href="index.css">
+  <link rel="icon" href="favicon.ico">
 
+  <!-- <link rel="preconnect" href="https://fonts.googleapis.com"> -->
+  <!-- <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> -->
+  <!-- <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:ital,wght@0,300..900;1,300..900&display=swap" -->
+    <!-- rel="stylesheet"> -->
+
+  <script language="javascript" type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
+  <!-- <script language="javascript" type="text/javascript" -->
+  <!-- src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/perl/perl.min.js"></script> -->
+  <link rel="stylesheet" type="text/css"
+    href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
+  </link>
+  <link rel="stylesheet" type="text/css"
+    href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/ayu-dark.min.css">
+  </link>
+  <!-- Include the LaTeX (sTeX) mode file -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/stex/stex.min.js"></script>
+
+  <link rel="stylesheet" href="output.css">
 </head>
 
 <body>
+  <!-- <img src> -->
+  <div class="panes">
+    <div class="editor-pane max-w-1/2">
 
-  <div class="container">
-    <div class="editor-pane">
-      <h2><strong>tex-typst-rendering-cluster</strong> <small>by WP</small></h2>
-      <textarea id="source" placeholder="Write your LaTeX or Typst document here...">\documentclass{article}
-        \usepackage{amsmath}
-        \begin{document}
-        \title{Hello World}
-        \author{You}
-        \maketitle
+      <textarea id="source" placeholder="Write your LaTeX or Typst document here...">
+\documentclass{article} % \documentclass{} is the first command in any LaTeX code. It is used to define what
+kind of document you are creating such as an article or a book, and begins the document preamble
 
-        \[
-        E = mc^2
-        \]
+\usepackage{amsmath} % \usepackage is a command that allows you to add functionality to your LaTeX code
 
-        \end{document}</textarea>
+\title{Simple Sample} % Sets article title
+\author{My Name} % Sets authors name
+\date{\today} % Sets date for date compiled
 
-      <form id="renderForm">
-        <div class="toolbar">
-          <select id="engine">
-            <option value="latex">LaTeX (pdflatex)</option>
-            <option value="typst">Typst</option>
-          </select>
-          <select id="format">
-            <option value="pdf">.pdf</option>
-            <option value="png">.png</option>
-          </select>
-          <button type="submit" id="submitBtn">
-            <span class="btn-text">Render</span>
-          </button>
-          <div id="spinner" class="spinner" style="display: none;"></div>
-        </div>
-      </form>
-      <div id="status" class="status">
-        1. LaTeX requires a full document with \begin{document} and preamble. <br>
-        2. Typst can render plain text without writing any commands.<br>
-        3. If you want .png output, your text must be at most 1 page long. <br>
-        4. The error handling is scarce, sorry!
+% The preamble ends with the command \begin{document}
+\begin{document} % All begin commands must be paired with an end command somewhere
+\maketitle % creates title using information in preamble (title, author, date)
+
+\section{Hello World!} % creates a section
+
+\textbf{Hello World!} Today I am learning \LaTeX. %notice how the command will end at the first non-alphabet
+charecter such as the . after \LaTeX
+\LaTeX{} is a great program for writing math. I can write in line math such as $a^2+b^2=c^2$ %$ tells LaTexX to
+compile as math
+. I can also give equations their own space:
+\begin{equation} % Creates an equation environment and is compiled as math
+\gamma^2+\theta^2=\omega^2
+\end{equation}
+If I do not leave any blank lines \LaTeX{} will continue this text without making it into a new paragraph.
+Notice how there was no indentation in the text after equation (1).
+Also notice how even though I hit enter after that sentence and here $\downarrow$
+\LaTeX{} formats the sentence without any break. Also look how it doesn't matter how many spaces I put between
+my words.
+
+For a new paragraph I can leave a blank space in my code.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis in dolor sit amet leo ullamcorper hendrerit. Proin sed vehicula ligula. Quisque aliquam quis tortor sit amet facilisis. Praesent suscipit et libero non eleifend. Ut et ornare lectus. Nam pharetra libero felis, imperdiet convallis leo varius a. Proin semper tellus non libero sodales porttitor. Suspendisse in mi vitae metus ornare mollis. Integer facilisis orci sit amet massa ultrices, ut tempor purus posuere. Maecenas nec imperdiet mi. Donec sed sem sit amet dui bibendum pellentesque. Quisque malesuada vitae sapien sit amet condimentum. In ac ex fermentum, lacinia turpis et, sagittis eros.
+
+Praesent tincidunt odio nec eros laoreet, vitae blandit augue tincidunt. Etiam id rhoncus est, et ullamcorper diam. Phasellus suscipit lacus metus, ut fermentum leo posuere sit amet. Etiam finibus velit in imperdiet pellentesque. Etiam sit amet commodo massa. Proin tincidunt mi at finibus mattis. Curabitur aliquet pharetra nunc, eu ultrices dui. Suspendisse ac lacus a leo mattis pellentesque quis ut nulla. Proin iaculis neque eget ligula lobortis malesuada. Vestibulum fermentum tortor in bibendum tincidunt. Etiam felis leo, volutpat id odio vel, bibendum vulputate turpis. Donec vel velit congue, volutpat augue in, porttitor eros. Proin odio elit, tristique a porta ac, porttitor sit amet odio. Pellentesque ac leo sollicitudin, finibus mauris eu, venenatis ante. In hac habitasse platea dictumst. Donec pretium urna sit amet viverra convallis.
+
+Duis sollicitudin ipsum ac urna pulvinar, non porta magna ullamcorper. Etiam ut congue tortor, a ultrices augue. Nulla sagittis suscipit est ac imperdiet. Nullam pharetra vehicula orci, vulputate sodales nulla aliquet et. Quisque a tincidunt leo, ut bibendum sapien. Nam enim odio, dignissim ut tempor eget, interdum vehicula nunc. In hac habitasse platea dictumst. Lorem ipsum dolor sit amet, consectetur adipiscing elit. In venenatis est at nunc porta, a ornare arcu tempus. In gravida varius nibh, in tristique risus. Integer consectetur nisl ut orci lobortis, vitae rhoncus nunc vulputate. Etiam nec nibh elementum, cursus risus a, fringilla nibh. Aenean eu dui sapien. Fusce ullamcorper vitae orci in interdum. Phasellus tristique elit augue, ac suscipit lorem volutpat eget. Etiam mollis nunc at ultricies laoreet.
+
+\end{document} % This is the end of the document
+      </textarea>
+    <div class="px-8 pb-5 flex flex-col gap-4">
+      <div class="flex flex-row justify-between">
+        <form id="renderForm">
+          <div class="toolbar">
+            <select id="engine">
+              <option value="latex">LaTeX (pdflatex)</option>
+              <option value="typst">Typst</option>
+            </select>
+            <select id="format">
+              <option value="pdf">.pdf</option>
+              <option value="png">.png</option>
+            </select>
+            <button type="submit" id="submitBtn">
+              <span class="btn-text">Render</span>
+            </button>
+            <div id="status" class="status">
+            </div>
+            <div id="spinner" class="spinner" style="display: none;"></div>
+          </div>
+        </form>
+        <form action="https://auth.texstwojtek.com/flows/-/default/invalidation/">
+          <input type="submit" value="Logout" />
+        </form>
+      </div>
+
+      <div class="flex flex-row justify-between items-center">
+        <!-- <h2><strong>TeXst</strong> <small>by WP</small></h2> -->
+        <!-- <span>by Wojciech Pachowiak</span> -->
+
+        <p class= "text-gray-400 text-sm" >
+          - LaTeX requires a full document with \begin{document} and a preamble. <br>
+          - Typst can render plain text without writing any commands.<br>
+          - If you want a .png output, your text must be at most 1 page long. <br>
+          - The error handling is scarce, sorry!
+        </p>
+        <img src="logo.svg" alt="TeXst" class="logo-img">
 
       </div>
     </div>
 
-    <div class="preview-pane">
-      <!-- <h3>📑 Preview</h3> -->
-      <div id="preview" class="pdf-preview">
-        <div style="color: #64748b;">Click "Render" to see output here</div>
+
+    </div>
+
+    <div class="preview-pane max-w-1/2">
+      <div id="preview" class="h-auto bg-white text-gray-400 flex flex-1 items-center content-stretch justify-center">
+        <div>Click "Render" to see the output here</div>
       </div>
     </div>
   </div>
 </body>
+
 <script src="index.js"></script>
+
 
 
 </html>

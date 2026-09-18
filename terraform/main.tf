@@ -13,7 +13,7 @@ variable "authentik_token" {
 }
 
 provider "authentik" {
-  url      = "http://auth.localhost.com"
+  url      = "https://auth.texstwojtek.com"
   token    = var.authentik_token
   insecure = true
 }
@@ -104,7 +104,7 @@ resource "authentik_flow" "recovery" {
   title       = "Reset your password"
   slug        = "custom-recovery"
   designation = "recovery"
-  background = var.authentik_background
+  background  = var.authentik_background
 }
 
 resource "authentik_stage_identification" "recovery_ident" {
@@ -350,18 +350,18 @@ resource "authentik_flow_stage_binding" "login_2" {
 #   invalidation=""
 # }
 
-data "authentik_brand" "authentik-default" {
-  domain = "authentik-default"
-}
+# data "authentik_brand" "authentik-default" {
+#   domain = "authentik-default"
+# }
 
-import {
-  to = authentik_brand.default_brand
-  id = data.authentik_brand.authentik-default.id
-}
+# import {
+#   to = authentik_brand.default_brand
+#   id = data.authentik_brand.authentik-default.id
+# }
 
-resource "authentik_brand" "default_brand" {
-  domain  = "authentik-default"
-  default = true
+resource "authentik_brand" "texstwojtek_brand" {
+  domain  = "texstwojtek.com"
+  default = false
 
   # flow_invalidation                = data.authentik_flow.invalidation.id
   flow_invalidation                = authentik_flow.logout.uuid
@@ -380,6 +380,7 @@ resource "authentik_brand" "default_brand" {
   #     backdrop-filter: blur(6px);
   #   }
   # CSS
+  # lifecycle { prevent_destroy = true }
 }
 
 // ================ PROVIDER
@@ -391,7 +392,7 @@ data "authentik_flow" "authorization_implicit_consent" {
 resource "authentik_provider_proxy" "traefik_forward_auth" {
   name               = "traefik-forward-auth"
   mode               = "forward_single"
-  external_host      = "http://app.localhost.com" # Authentik's own public URL
+  external_host      = "https://app.texstwojtek.com" # Authentik's own public URL
   authorization_flow = data.authentik_flow.authorization_implicit_consent.id
   # invalidation_flow     = data.authentik_flow.invalidation.id
   invalidation_flow     = authentik_flow.logout.uuid
@@ -407,7 +408,7 @@ resource "authentik_application" "tex-typst-rendering-cluster-2" {
   name              = "tex-typst-rendering-cluster-2"
   slug              = "tex-typst-rendering-cluster-2"
   protocol_provider = authentik_provider_proxy.traefik_forward_auth.id
-  meta_launch_url   = "http://app.localhost.com" # not a "real" app people click into
+  meta_launch_url   = "https://app.texstwojtek.com" # not a "real" app people click into
 
   lifecycle {
     ignore_changes = [meta_icon] # provider doesn't manage the auto-generated icon well
@@ -416,31 +417,34 @@ resource "authentik_application" "tex-typst-rendering-cluster-2" {
 
 // ===================== OUTPOST
 
-data "http" "embedded_outpost" {
-  url = "http://auth.localhost.com/api/v3/outposts/instances/"
-  request_headers = {
-    Authorization = "Bearer ${var.authentik_token}"
-    Accept        = "application/json"
-  }
-}
-
-import {
-  to = authentik_outpost.embedded
-  id = jsondecode(data.http.embedded_outpost.response_body).results[0].pk
-}
-
-
-
-# import {
-#   id = "2b9b1a34-dce7-4d7c-bbfb-c04f6faa3c7b" # pk from the curl above
-#   to = authentik_outpost.embedded
+# data "http" "embedded_outpost" {
+#   url = "https://auth.texstwojtek.com/api/v3/outposts/instances/"
+#   request_headers = {
+#     Authorization = "Bearer ${var.authentik_token}"
+#     Accept        = "application/json"
+#   }
 # }
 
-resource "authentik_outpost" "embedded" {
+# import {
+#   to = authentik_outpost.embedded
+#   id = jsondecode(data.http.embedded_outpost.response_body).results[0].pky
+# }
+
+# resource "authentik_outpost" "embedded" {
+#   name = "authentik Embedded Outpost"
+#   type = "proxy"
+#   protocol_providers = [
+#     authentik_provider_proxy.traefik_forward_auth.id,
+#   ]
+#   # service_connection = "403a40bd-821a-4a5b-9a89-ba3938e1fa8e"  # service_connection_obj.pk from the curl
+#   lifecycle { prevent_destroy = true }
+# }
+
+data "authentik_outpost" "embedded" {
   name = "authentik Embedded Outpost"
-  type = "proxy"
-  protocol_providers = [
-    authentik_provider_proxy.traefik_forward_auth.id,
-  ]
-  # service_connection = "403a40bd-821a-4a5b-9a89-ba3938e1fa8e"  # service_connection_obj.pk from the curl
+}
+
+resource "authentik_outpost_provider_attachment" "attachment" {
+  outpost           = data.authentik_outpost.embedded.id
+  protocol_provider = authentik_provider_proxy.traefik_forward_auth.id
 }

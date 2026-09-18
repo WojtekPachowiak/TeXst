@@ -5,9 +5,9 @@ services:
     command: server /data --console-address ":9001" --address=":9002"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.minio.rule=Host(`app.localhost.com`) && PathPrefix(`/rendered-documents/`)"
-      - "traefik.http.routers.minio.entrypoints=web"
-      # - "traefik.http.routers.minio.tls=false"
+      - "traefik.http.routers.minio.rule=Host(`app.texstwojtek.com`) && PathPrefix(`/rendered-documents/`)"
+      - "traefik.http.routers.minio.entrypoints=websecure"
+      - "traefik.http.routers.minio.tls=true"
       # - "traefik.http.routers.minio.tls.certresolver=le"
       - "traefik.http.routers.minio.priority=13"
       - "traefik.http.services.minio.loadbalancer.server.port=9002"
