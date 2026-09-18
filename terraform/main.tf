@@ -367,7 +367,7 @@ resource "authentik_brand" "texstwojtek_brand" {
   flow_invalidation                = authentik_flow.logout.uuid
   flow_authentication              = authentik_flow.login.uuid
   flow_recovery                    = authentik_flow.recovery.uuid
-  default_application              = authentik_application.tex-typst-rendering-cluster-2.uuid
+  default_application              = authentik_application.TeXst.uuid
   branding_title                   = "TeXst"
   branding_logo                    = "branding/logo.svg"
   branding_favicon                 = "branding/favicon.ico"
@@ -404,9 +404,9 @@ resource "authentik_provider_proxy" "traefik_forward_auth" {
 
 //=================================== APPLICATION
 
-resource "authentik_application" "tex-typst-rendering-cluster-2" {
-  name              = "tex-typst-rendering-cluster-2"
-  slug              = "tex-typst-rendering-cluster-2"
+resource "authentik_application" "TeXst" {
+  name              = "TeXst"
+  slug              = "TeXst"
   protocol_provider = authentik_provider_proxy.traefik_forward_auth.id
   meta_launch_url   = "https://app.texstwojtek.com" # not a "real" app people click into
 
