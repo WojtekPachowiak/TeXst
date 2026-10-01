@@ -7,22 +7,31 @@ terraform {
   }
 }
 
-variable "authentik_token" {
-  type      = string
-  sensitive = true
-}
-
-provider "authentik" {
-  url      = "https://auth.texstwojtek.com"
-  token    = var.authentik_token
-  insecure = true
-}
 
 variable "authentik_background" {
   type    = string
   default = "branding/background.jpg"
 }
 
+variable "domain" {
+  type = string
+}
+
+locals {
+  app_domain  = "https://app.${var.domain}"
+  auth_domain = "https://auth.${var.domain}"
+}
+
+variable "authentik_token" {
+  type      = string
+  sensitive = true
+}
+
+provider "authentik" {
+  url      = local.auth_domain
+  token    = var.authentik_token
+  insecure = true
+}
 
 //========================================== github login
 
@@ -359,8 +368,8 @@ resource "authentik_flow_stage_binding" "login_2" {
 #   id = data.authentik_brand.authentik-default.id
 # }
 
-resource "authentik_brand" "texstwojtek_brand" {
-  domain  = "texstwojtek.com"
+resource "authentik_brand" "texst_brand" {
+  domain  = var.domain
   default = false
 
   # flow_invalidation                = data.authentik_flow.invalidation.id
@@ -392,7 +401,7 @@ data "authentik_flow" "authorization_implicit_consent" {
 resource "authentik_provider_proxy" "traefik_forward_auth" {
   name               = "traefik-forward-auth"
   mode               = "forward_single"
-  external_host      = "https://app.texstwojtek.com" # Authentik's own public URL
+  external_host      = local.app_domain # Authentik's own public URL
   authorization_flow = data.authentik_flow.authorization_implicit_consent.id
   # invalidation_flow     = data.authentik_flow.invalidation.id
   invalidation_flow     = authentik_flow.logout.uuid
@@ -408,7 +417,7 @@ resource "authentik_application" "TeXst" {
   name              = "TeXst"
   slug              = "TeXst"
   protocol_provider = authentik_provider_proxy.traefik_forward_auth.id
-  meta_launch_url   = "https://app.texstwojtek.com" # not a "real" app people click into
+  meta_launch_url   = local.app_domain # not a "real" app people click into
 
   lifecycle {
     ignore_changes = [meta_icon] # provider doesn't manage the auto-generated icon well

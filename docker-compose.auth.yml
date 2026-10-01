@@ -8,15 +8,14 @@ services:
     command: server
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.authentik.rule=Host(`auth.texstwojtek.com`)"
+      - "traefik.http.routers.authentik.rule=Host(`$GLOBAL_AUTH_DOMAIN`)"
       - "traefik.http.routers.authentik.entrypoints=websecure"
       - "traefik.http.routers.authentik.tls=true"
-      # - "traefik.http.routers.authentik.tls.certresolver=le"
       - "traefik.http.routers.authentik.priority=30"
       - "traefik.http.routers.authentik.service=authentik-svc"
 
 
-      - "traefik.http.routers.authentik-outpost.rule=Host(`app.texstwojtek.com`) && PathPrefix(`/outpost.goauthentik.io/`)"
+      - "traefik.http.routers.authentik-outpost.rule=Host(`$GLOBAL_APP_DOMAIN`) && PathPrefix(`/outpost.goauthentik.io/`)"
       - "traefik.http.routers.authentik-outpost.entrypoints=websecure"
       - "traefik.http.routers.authentik-outpost.tls=true"
       - "traefik.http.routers.authentik-outpost.priority=20"
@@ -31,9 +30,27 @@ services:
       - "traefik.http.middlewares.authentik-nocache.headers.customresponseheaders.Cache-Control=private, no-cache"
       - "traefik.http.middlewares.authentik-nocache.headers.customresponseheaders.Pragma=no-cache"
       - "traefik.http.middlewares.authentik-nocache.headers.customresponseheaders.Expires=0"
-      
-    env_file:
-      - "./envs/authentik.secret.env"
+
+    environment:
+      - AUTHENTIK_REDIS__HOST=${AUTHENTIK_REDIS__HOST}
+      - AUTHENTIK_POSTGRESQL__HOST=${AUTHENTIK_POSTGRESQL__HOST}
+      - AUTHENTIK_ERROR_REPORTING__ENABLED=${AUTHENTIK_ERROR_REPORTING__ENABLED}
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY} 
+      - AUTHENTIK_EMAIL__HOST=${AUTHENTIK_EMAIL__HOST}
+      - AUTHENTIK_EMAIL__PORT=${AUTHENTIK_EMAIL__PORT}
+      - AUTHENTIK_EMAIL__USERNAME=${AUTHENTIK_EMAIL__USERNAME}
+      - AUTHENTIK_EMAIL__PASSWORD=${AUTHENTIK_EMAIL__PASSWORD}
+      - AUTHENTIK_EMAIL__USE_TLS=${AUTHENTIK_EMAIL__USE_TLS}
+      - AUTHENTIK_EMAIL__USE_SSL=${AUTHENTIK_EMAIL__USE_SSL}
+      - AUTHENTIK_EMAIL__FROM=${AUTHENTIK_EMAIL__FROM}
+      - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL}
+      - AUTHENTIK_BOOTSTRAP_PASSWORD_HASH=${AUTHENTIK_BOOTSTRAP_PASSWORD_HASH}
+      - AUTHENTIK_BOOTSTRAP_TOKEN=${AUTHENTIK_BOOTSTRAP_TOKEN}
+      - AUTHENTIK_POSTGRESQL__NAME=${POSTGRES_DB}
+      - AUTHENTIK_POSTGRESQL__USER=${POSTGRES_USER}
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${POSTGRES_PASSWORD}
+    # env_file:
+      # - "./envs/authentik.secret.env"
     volumes:
       - authentik_media:/media
       - authentik_certs:/certs
@@ -49,7 +66,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 3m
+      start_period: 5m
     restart: unless-stopped
 
 
@@ -59,8 +76,26 @@ services:
     attach: false #prevent logging
     container_name: authentik-worker
     command: worker
-    env_file:
-      - "./envs/authentik.secret.env"
+    environment:
+      - AUTHENTIK_REDIS__HOST=${AUTHENTIK_REDIS__HOST}
+      - AUTHENTIK_POSTGRESQL__HOST=${AUTHENTIK_POSTGRESQL__HOST}
+      - AUTHENTIK_ERROR_REPORTING__ENABLED=${AUTHENTIK_ERROR_REPORTING__ENABLED}
+      - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY} 
+      - AUTHENTIK_EMAIL__HOST=${AUTHENTIK_EMAIL__HOST}
+      - AUTHENTIK_EMAIL__PORT=${AUTHENTIK_EMAIL__PORT}
+      - AUTHENTIK_EMAIL__USERNAME=${AUTHENTIK_EMAIL__USERNAME}
+      - AUTHENTIK_EMAIL__PASSWORD=${AUTHENTIK_EMAIL__PASSWORD}
+      - AUTHENTIK_EMAIL__USE_TLS=${AUTHENTIK_EMAIL__USE_TLS}
+      - AUTHENTIK_EMAIL__USE_SSL=${AUTHENTIK_EMAIL__USE_SSL}
+      - AUTHENTIK_EMAIL__FROM=${AUTHENTIK_EMAIL__FROM}
+      - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL}
+      - AUTHENTIK_BOOTSTRAP_PASSWORD_HASH=${AUTHENTIK_BOOTSTRAP_PASSWORD_HASH}
+      - AUTHENTIK_BOOTSTRAP_TOKEN=${AUTHENTIK_BOOTSTRAP_TOKEN}
+      - AUTHENTIK_POSTGRESQL__NAME=${POSTGRES_DB}
+      - AUTHENTIK_POSTGRESQL__USER=${POSTGRES_USER}
+      - AUTHENTIK_POSTGRESQL__PASSWORD=${POSTGRES_PASSWORD}
+    # env_file:
+    #   - "./envs/authentik.secret.env"
     depends_on:
       - postgres
       - redis

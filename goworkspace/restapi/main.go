@@ -45,10 +45,10 @@ var (
 
 type Environment struct {
 	REDIS_ADDR                  string
-	STREAM_LATEX                string
-	STREAM_TYPST                string
-	CONSMUMER_GROUP_LATEX       string
-	CONSUMER_GROUP_TYPST        string
+	REDIS_STREAM_LATEX          string
+	REDIS_STREAM_TYPST          string
+	REDIS_CONSMUMER_GROUP_LATEX string
+	REDIS_CONSUMER_GROUP_TYPST  string
 	MINIO_BUCKET_NAME           string
 	REDIS_PUBSUB_CHANNEL_PREFIX string
 }
@@ -95,11 +95,11 @@ func main() {
 
 	minioClient, _, err = shared.NewMinioClient(false)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatal("MinIO client creation failed:",err.Error())
 	}
 
-	redisClient.XGroupCreateMkStream(ctx, env.STREAM_LATEX, env.CONSMUMER_GROUP_LATEX, "0").Err()
-	redisClient.XGroupCreateMkStream(ctx, env.STREAM_TYPST, env.CONSUMER_GROUP_TYPST, "0").Err()
+	redisClient.XGroupCreateMkStream(ctx, env.REDIS_STREAM_LATEX, env.REDIS_CONSMUMER_GROUP_LATEX, "0").Err()
+	redisClient.XGroupCreateMkStream(ctx, env.REDIS_STREAM_TYPST, env.REDIS_CONSUMER_GROUP_TYPST, "0").Err()
 
 	mux := http.NewServeMux()
 	// prometheus metrics server

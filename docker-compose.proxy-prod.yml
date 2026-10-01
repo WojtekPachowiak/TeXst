@@ -1,0 +1,9 @@
+services:
+  traefik:
+    volumes:
+      - ./traefik/static/traefik.prod.yml:/etc/traefik/traefik.yml:ro
+      - traefik-acme:/letsencrypt
+    restart: unless-stopped
+
+volumes:
+  traefik-acme:

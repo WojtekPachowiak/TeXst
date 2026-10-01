@@ -1,0 +1,7 @@
+services:
+  traefik:
+    volumes:
+      - ./certs:/certs:ro
+      - ./traefik/static/traefik.dev.yml:/etc/traefik/traefik.yml
+      - ./traefik/dynamic.dev/tls.yml:/etc/traefik/dynamic/tls.yml:ro
+    restart: unless-stopped

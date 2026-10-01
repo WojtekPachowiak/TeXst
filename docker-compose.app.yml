@@ -8,20 +8,34 @@ services:
     container_name: restapi
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.restapi.rule=Host(`app.texstwojtek.com`)"
+      - "traefik.http.routers.restapi.rule=Host(`${GLOBAL_APP_DOMAIN}`)"
       - "traefik.http.routers.restapi.entrypoints=websecure"
       - "traefik.http.routers.restapi.priority=10"
       - "traefik.http.routers.restapi.tls=true"
+#
       - "traefik.http.routers.restapi.middlewares=authentik-auth,authentik-nocache"
       - "traefik.http.services.restapi.loadbalancer.server.port=8080"
       - "traefik.http.services.restapi.loadbalancer.responseforwarding.flushinterval=100ms"
     # ports: 
       # - "8080:8080"
-    env_file:
-      - ./envs/restapi.env
-      - ./envs/storage.env
-    volumes: #ONLY FOR DEV
-    - ~/Programming/tex-typst-rendering-cluster/goworkspace/restapi/static:/app/static
+    # env_file:
+      # - ./envs/restapi.env
+      # - ./envs/storage.env
+    environment:
+      - MINIO_INTERNAL_ENDPOINT=${MINIO_INTERNAL_ENDPOINT}
+      # - MINIO_EXTERNAL_ENDPOINT=${MINIO_EXTERNAL_ENDPOINT}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      # - MINIO_USE_SSL=${MINIO_USE_SSL}
+      - REDIS_STREAM_LATEX=${REDIS_STREAM_LATEX}
+      - REDIS_STREAM_TYPST=${REDIS_STREAM_TYPST}
+      - REDIS_CONSUMER_GROUP_LATEX=${REDIS_CONSUMER_GROUP_LATEX}
+      - REDIS_CONSUMER_GROUP_TYPST=${REDIS_CONSUMER_GROUP_TYPST}
+      - REDIS_ADDR=${REDIS_ADDR}
+      - REDIS_PUBSUB_CHANNEL_PREFIX=${REDIS_PUBSUB_CHANNEL_PREFIX}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}     
+    # volumes: #ONLY FOR DEV
+    # - ~/Programming/tex-typst-rendering-cluster/goworkspace/restapi/static:/app/static
     depends_on:
       - redis
       - minio
@@ -32,10 +46,23 @@ services:
       context: .
       dockerfile: Dockerfile.worker-typst
     container_name: worker-typst
-    env_file:
-      - ./envs/worker.env
-      - ./envs/worker-typst.env
-      - ./envs/storage.env
+    # env_file:
+    #   - ./envs/worker.env
+    #   - ./envs/worker-typst.env
+    #   - ./envs/storage.env
+    environment:
+      - MINIO_INTERNAL_ENDPOINT=${MINIO_INTERNAL_ENDPOINT}
+      - MINIO_EXTERNAL_ENDPOINT=${MINIO_EXTERNAL_ENDPOINT}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_USE_SSL=${MINIO_USE_SSL}
+      - REDIS_ADDR=${REDIS_ADDR}
+      - WORKER_CONSUMER_GROUP=${REDIS_CONSUMER_GROUP_TYPST}
+      - WORKER_CONSUMER_NAME=workertypst
+      - WORKER_STREAM_NAME=${REDIS_STREAM_TYPST}
+      - WORKER_ENGINE=typst
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
+      - REDIS_PUBSUB_CHANNEL_PREFIX=${REDIS_PUBSUB_CHANNEL_PREFIX}      
     depends_on:
       - redis
       - minio
@@ -46,10 +73,23 @@ services:
       context: .
       dockerfile: Dockerfile.worker-latex
     container_name: worker-latex
-    env_file:
-      - ./envs/worker.env
-      - ./envs/worker-latex.env
-      - ./envs/storage.env
+    environment:
+      - MINIO_INTERNAL_ENDPOINT=${MINIO_INTERNAL_ENDPOINT}
+      - MINIO_EXTERNAL_ENDPOINT=${MINIO_EXTERNAL_ENDPOINT}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_USE_SSL=${MINIO_USE_SSL}
+      - REDIS_ADDR=${REDIS_ADDR}
+      - WORKER_CONSUMER_GROUP=${REDIS_CONSUMER_GROUP_LATEX}
+      - WORKER_CONSUMER_NAME=workerlatex
+      - WORKER_STREAM_NAME=${REDIS_STREAM_LATEX}
+      - WORKER_ENGINE=latex
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
+      - REDIS_PUBSUB_CHANNEL_PREFIX=${REDIS_PUBSUB_CHANNEL_PREFIX}      
+    # env_file:
+    #   - ./envs/worker.env
+    #   - ./envs/worker-latex.env
+    #   - ./envs/storage.env
     depends_on:
       - redis
       - minio

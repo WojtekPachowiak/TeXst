@@ -1,25 +1,28 @@
 services:
   minio:
-    image: minio/minio:latest
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
     container_name: minio
     command: server /data --console-address ":9001" --address=":9002"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.minio.rule=Host(`app.texstwojtek.com`) && PathPrefix(`/rendered-documents/`)"
+      - "traefik.http.routers.minio.rule=Host(`${GLOBAL_APP_DOMAIN}`) && PathPrefix(`/${MINIO_BUCKET_NAME}/`)"
       - "traefik.http.routers.minio.entrypoints=websecure"
       - "traefik.http.routers.minio.tls=true"
-      # - "traefik.http.routers.minio.tls.certresolver=le"
+#
       - "traefik.http.routers.minio.priority=13"
       - "traefik.http.services.minio.loadbalancer.server.port=9002"
       - "traefik.http.routers.minio.middlewares=authentik-auth"
 
-
-    ports:
+    # ports:
     #   - "9000:9000" # API port
-      - "9001:9001" # Console port
+      # - "9001:9001" # Console port
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      - MINIO_EXTERNAL_ENDPOINT=${MINIO_EXTERNAL_ENDPOINT}
+      - MINIO_INTERNAL_ENDPOINT=${MINIO_INTERNAL_ENDPOINT}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_USE_SSL=${MINIO_USE_SSL}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
     volumes:
       - minio_data:/data
     restart: unless-stopped
@@ -32,14 +35,18 @@ services:
 
 
   minio-init:
-    image: minio/mc:latest
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
     depends_on:
       - minio
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
     entrypoint: >
       /bin/sh -c "
       sleep 5;
-      /usr/bin/mc alias set myminio http://minio:9002 minioadmin minioadmin;
-      /usr/bin/mc mb set myminio/rendered-documents --ignore-existing;
-      # /usr/bin/mc anonymous set download myminio/rendered-documents;
+      /usr/bin/mc alias set myminio http://minio:9002 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
+      /usr/bin/mc mb myminio/$${MINIO_BUCKET_NAME} --ignore-existing;
+      # /usr/bin/mc anonymous set download myminio/$${MINIO_BUCKET_NAME};
       exit 0;
       "

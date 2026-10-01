@@ -4,8 +4,8 @@ services:
     image: redis/redisinsight:latest
     container_name: redisinsight
     restart: unless-stopped
-    ports:
-      - "5540:5540"
+    # ports:
+      # - "5540:5540"
     volumes:
       - redisinsight-data:/data
     environment:
@@ -19,8 +19,8 @@ services:
     image: oliver006/redis_exporter:latest
     container_name: redis-exporter
     environment:
-      REDIS_ADDR: redis://redis:6379
-      REDIS_EXPORTER_CHECK_STREAMS: stream:latex,stream:typst
+      REDIS_ADDR: redis://${REDIS_ADDR}
+      REDIS_EXPORTER_CHECK_STREAMS: ${REDIS_STREAM_LATEX},${REDIS_STREAM_TYPST}
     depends_on:
       - redis
     restart: unless-stopped
@@ -30,11 +30,11 @@ services:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     attach: false #prevent logging
     container_name: cadvisor
-    privileged: true
+    # privileged: true
     # devices:
     #   - /dev/kmsg:/dev/kmsg
-    ports: 
-      - "8081:8080"
+    # ports: 
+      # - "8081:8080"
     volumes: 
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -51,8 +51,8 @@ services:
     image: prom/prometheus:latest
     attach: false
     container_name: prometheus
-    ports:
-      - "9090:9090"
+    # ports:
+      # - "9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -68,11 +68,11 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     attach: false
-    ports: 
-      - "3000:3000"
+    # ports: 
+      # - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+      - GF_AUTH_ANONYMOUS_ENABLED=${GF_AUTH_ANONYMOUS_ENABLED}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/dashboards:/etc/grafana/dashboards
@@ -83,9 +83,9 @@ services:
 
   
 
-  mailpit:
-    image: axllent/mailpit:v1.30.4
-    container_name: mailpit
-    ports: 
-      - "8025:8025"
-    restart: unless-stopped
+  # mailpit:
+  #   image: axllent/mailpit:v1.30.4
+  #   container_name: mailpit
+  #   # ports: 
+  #     # - "8025:8025"
+  #   restart: unless-stopped

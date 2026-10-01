@@ -46,9 +46,9 @@ var minioPresigner *minio.Client
 
 type Environment struct {
 	REDIS_ADDR                  string
-	CONSUMER_GROUP              string
-	CONSUMER_NAME               string
-	STREAM_NAME                 string
+	WORKER_CONSUMER_GROUP              string
+	WORKER_CONSUMER_NAME               string
+	WORKER_STREAM_NAME                 string
 	WORKER_ENGINE               string
 	MINIO_BUCKET_NAME           string
 	REDIS_PUBSUB_CHANNEL_PREFIX string
@@ -101,7 +101,7 @@ func main() {
 		log.Fatal("Redis connection failed:", err)
 	}
 
-	if err := redisClient.XGroupCreateMkStream(ctx, env.STREAM_NAME, env.CONSUMER_GROUP, "0").Err(); err != nil {
+	if err := redisClient.XGroupCreateMkStream(ctx, env.WORKER_STREAM_NAME, env.WORKER_CONSUMER_GROUP, "0").Err(); err != nil {
 		if !strings.Contains(err.Error(), "BUSYGROUP") {
 			log.Fatal("Failed to create consumer group:", err)
 		}
@@ -119,9 +119,9 @@ func main() {
 
 	for {
 		streams, err := redisClient.XReadGroup(ctx, &redis.XReadGroupArgs{
-			Group:    env.CONSUMER_GROUP,
-			Consumer: env.CONSUMER_NAME,
-			Streams:  []string{env.STREAM_NAME, ">"},
+			Group:    env.WORKER_CONSUMER_GROUP,
+			Consumer: env.WORKER_CONSUMER_NAME,
+			Streams:  []string{env.WORKER_STREAM_NAME, ">"},
 			Count:    1,
 			Block:    5 * time.Second,
 		}).Result()
@@ -325,7 +325,7 @@ func markJobFailed(jobID, errMsg string) {
 
 func acknowledgeMessage(messageID string) {
 	ctx := context.Background()
-	if err := redisClient.XAck(ctx, env.STREAM_NAME, env.CONSUMER_GROUP, messageID).Err(); err != nil {
+	if err := redisClient.XAck(ctx, env.WORKER_STREAM_NAME, env.WORKER_CONSUMER_GROUP, messageID).Err(); err != nil {
 		log.Printf("Failed to acknowledge message %s: %v", messageID, err)
 	}
 }

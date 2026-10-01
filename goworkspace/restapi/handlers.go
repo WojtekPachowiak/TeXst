@@ -53,9 +53,9 @@ func submitJobHandler(w http.ResponseWriter, r *http.Request) {
 	var targetStream string
 	switch engine {
 	case "latex":
-		targetStream = env.STREAM_LATEX
+		targetStream = env.REDIS_STREAM_LATEX
 	case "typst":
-		targetStream = env.STREAM_TYPST
+		targetStream = env.REDIS_STREAM_TYPST
 	}
 
 	ctx := context.Background()

@@ -3,7 +3,7 @@ package shared
 import (
 	"context"
 	"log"
-
+	"fmt"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -12,8 +12,8 @@ import (
 type Environment struct {
 	MINIO_INTERNAL_ENDPOINT string
 	MINIO_EXTERNAL_ENDPOINT string
-	MINIO_ACCESS_KEY        string
-	MINIO_SECRET_KEY        string
+	MINIO_ROOT_USER        string
+	MINIO_ROOT_PASSWORD        string
 	MINIO_USE_SSL           string
 }
 
@@ -25,14 +25,14 @@ func NewMinioClient(withPresigner bool) (*minio.Client, *minio.Client, error) {
 	}
 
 	client, err := minio.New(env.MINIO_INTERNAL_ENDPOINT, &minio.Options{
-		Creds:  credentials.NewStaticV4(env.MINIO_ACCESS_KEY, env.MINIO_SECRET_KEY, ""),
+		Creds:  credentials.NewStaticV4(env.MINIO_ROOT_USER, env.MINIO_ROOT_PASSWORD, ""),
 		Secure: false,
 		// Secure: env.MINIO_USE_SSL == "true",
 		Region: "us-east-1",
 		// BucketLookup: minio.BucketLookupPath,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("Error for client: %w", err) 
 	}
 
 	// ping to check it works
@@ -44,13 +44,13 @@ func NewMinioClient(withPresigner bool) (*minio.Client, *minio.Client, error) {
 	if withPresigner {
 		// this client's only purpose is to generate presigned URLs (it doesnt need internet access; it cant reach localhost:9002)
 		presigner, err = minio.New(env.MINIO_EXTERNAL_ENDPOINT, &minio.Options{
-			Creds:  credentials.NewStaticV4(env.MINIO_ACCESS_KEY, env.MINIO_SECRET_KEY, ""),
+			Creds:  credentials.NewStaticV4(env.MINIO_ROOT_USER, env.MINIO_ROOT_PASSWORD, ""),
 			Secure: env.MINIO_USE_SSL == "true",
 			Region: "us-east-1",
 			// BucketLookup: minio.BucketLookupPath,
 		})
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("error for presigner: %w", err)
 		}
 
 	}
