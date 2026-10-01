@@ -438,3 +438,5 @@ terraform.rc
 
 *secret*
 !*TEMPLATE*
+*.pem
+/certs/
