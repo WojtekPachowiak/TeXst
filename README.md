@@ -1,5 +1,5 @@
 
-# TeXst (demo project)
+# TeXst TODO README IN PROGRESS
 
 An app for rendering LaTeX and Typst files in the browser.
 
