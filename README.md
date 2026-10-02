@@ -1,7 +1,7 @@
 
 # TeXst TODO README IN PROGRESS
 
-<img width="1428" height="1075" alt="image" src="https://github.com/user-attachments/assets/5b41f8b3-7923-45ee-b612-455855fbbae8" />
+<img width="1955" height="1126" alt="image" src="https://github.com/user-attachments/assets/7e78050a-32f9-4b50-81c7-a536c48bbbc6" />
 
 <img width="1955" height="1126" alt="image" src="https://github.com/user-attachments/assets/9c7eb535-568c-43c1-9f8b-5f0364b5dc04" />
 
