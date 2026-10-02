@@ -12,7 +12,7 @@ services:
       - "traefik.http.routers.restapi.entrypoints=websecure"
       - "traefik.http.routers.restapi.priority=10"
       - "traefik.http.routers.restapi.tls=true"
-#
+      - "traefik.http.routers.restapi.tls.certresolver=le"
       - "traefik.http.routers.restapi.middlewares=authentik-auth,authentik-nocache"
       - "traefik.http.services.restapi.loadbalancer.server.port=8080"
       - "traefik.http.services.restapi.loadbalancer.responseforwarding.flushinterval=100ms"

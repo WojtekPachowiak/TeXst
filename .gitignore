@@ -440,3 +440,8 @@ terraform.rc
 !*TEMPLATE*
 *.pem
 /certs/
+
+.env.dev
+.env.prod
+.env.tf.dev
+.env.tf.prod

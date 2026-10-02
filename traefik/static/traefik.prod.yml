@@ -26,11 +26,12 @@ providers:
 certificatesResolvers:
   le:
     acme:
-      email: someemail@lolz.com
+      email: wojtekpaszo@gmail.com
       storage: /letsencrypt/acme.json
       httpChallenge:
         entryPoint: web
-
+      # tlsChallenge: {}
+      
 metrics:
   prometheus:
     addEntryPointsLabels: true
@@ -38,4 +39,5 @@ metrics:
     addServicesLabels: true
 
 log:
+  # level: DEBUG
   level: INFO

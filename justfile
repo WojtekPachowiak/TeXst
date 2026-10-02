@@ -3,9 +3,6 @@
 rootdir := "/home/wojtekp/Programming/tex-typst-rendering-cluster/"
 staticdir := rootdir + "goworkspace/restapi/static/"
 
-# A local `dc` shortcut for all docker compose files
-# dc := "docker compose -f docker-compose.app.yml -f docker-compose.auth.yml -f docker-compose.proxy.yml -f docker-compose.databases.yml -f docker-compose.monitoring.yml -f docker-compose.storage.yml -f docker-compose.volumes.yml"
-
 # Compile test.tex to PDF via the pandoc container, clean aux files
 convpdf:
     docker compose run --rm pandoc sh -c "pdflatex --interaction=nonstopmode test.tex test.pdf ; latexmk -c"
@@ -40,26 +37,10 @@ run-loadtest-6000-pdf-typst:
 run-loadtest-6000-png-typst:
     ./loadtest/loadtest --length=6000 --engine=typst --format=png
 
-# Run the restapi locally (env vars sourced from goworkspace/restapi.env)
-# run-restapi:
-#     (export `grep -v '^#' goworkspace/restapi.env | xargs`; cd goworkspace/restapi && go run .)
-
 # Open an interactive redis-cli against the running redis container
 redis-cli:
     docker exec -it redis redis-cli
 
-# --- Docker compose shortcuts ---
-
-# # Run `docker compose <args>` with all the compose files
-# dc *args:
-#     {{dc}} {{args}}
-
-# # Build and start all docker compose services
-# dcub:
-#     {{dc}} up --build
-
-# Alias: `just dcu` == `just dcub`
-# alias dcu := dcub
 
 # Open all local dev dashboards in Chromium
 openwww:
@@ -79,8 +60,33 @@ tailwindcss:
         -o {{staticdir + "input.css"}} \
         --watch
 
+# ================ docker
+
 dc where *rest: 
-    docker compose -f docker-compose.yml -f docker-compose.proxy-{{where}}.yml  --env-file .env --env-file .env.secret {{rest}} 
+    docker compose -f docker-compose.yml -f docker-compose.proxy-{{where}}.yml  --env-file .env.{{where}} --env-file .env.secret {{rest}} 
+
+#=================== VPS manage
+
+ssh-conn  := "ovhvps"
+
+vps-prepssh:
+    eval "$(ssh-agent -s)"
+    ssh-add ~/.ssh/ovhvps_ed25519
+
+vps-deploy:
+    just prep_envs
+    rsync -avz traefik prometheus grafana authentik {{ssh-conn}}:/home/app/
+    DOCKER_HOST="ssh://{{ssh-conn}}" just dc prod up --build
+    # DOCKER_HOST="ssh://{{ssh-conn}}" docker image prune -f
+
+vps-customcmd *cmd:
+    DOCKER_HOST="ssh://{{ssh-conn}}" just dc prod {{cmd}}
+      
+
+vps-hardreset:
+    just prep_envs
+    DOCKER_HOST="ssh://{{ssh-conn}}" just dc prod down -v
+    # DOCKER_HOST="ssh://{{ssh-conn}}" docker image prune -f
 
 
 # ============================ TERRAFORM
@@ -88,39 +94,34 @@ dc where *rest:
 terraform_global_flags := "-chdir=terraform"
 # terraform_local_flags := "-var-file=.env"
 
-tf-init:
-	terraform {{terraform_global_flags}} init
+tf-init where="dev":
+	terraform {{terraform_global_flags}} init -var-file=.env.tf.{{where}}
 
-tf-plan:
-	terraform {{terraform_global_flags}} plan    
+tf-plan where="dev":
+	terraform {{terraform_global_flags}} plan -var-file=.env.tf.{{where}}   
 
-tf-apply:
-	terraform {{terraform_global_flags}} apply 
+tf-apply where="dev":
+	terraform {{terraform_global_flags}} apply -var-file=.env.tf.{{where}}
 
 #============================== prepare envs
 
 alias pe := prep_envs
 
-is_local := if env_var_or_default("TEXST_LOCAL", "") != "" { "true" } else { "false" }
-override_envfile :=(
-    if is_local == "true"
-        { "./.env.dev.raw"  }
-    else
-        { "./env.prod.raw"}
-)
-
 prep_envs:
     # eval raw env and dev/prod 
-    set -a; source {{ override_envfile }}; source ./.env.raw; set +a; envsubst < ./.env.raw > ./.env 
+    set -a; source ./.env.dev.raw; source ./.env.raw; set +a; envsubst < ./.env.raw > ./.env.dev 
+    set -a; source ./.env.prod.raw; source ./.env.raw; set +a; envsubst < ./.env.raw > ./.env.prod 
     # eval raw secret env
     set -a; source ./.env.secret.raw; set +a; DOLLAR='$' envsubst < ./.env.secret.raw > .env.secret
+    chmod 600 .env.secret
     #prep secret TEMPLATE
     cp .env.secret .env.secret.TEMPLATE
     sd  "=.*" "=" .env.secret.TEMPLATE   
     sd  "#.*" "" .env.secret.TEMPLATE
     sd  -A "\n{2,}" "\n" .env.secret.TEMPLATE
     #prep terraform envs
-    rg -I "^TF_VAR.*" .env .env.secret | sd "TF_VAR_" "" > terraform/.auto.tfvars
+    rg -I "^TF_VAR.*" .env.dev .env.secret | sd "TF_VAR_" "" > terraform/.env.tf.dev
+    rg -I "^TF_VAR.*" .env.prod .env.secret | sd "TF_VAR_" "" > terraform/.env.tf.prod
 
 #===================== local certs for https
 

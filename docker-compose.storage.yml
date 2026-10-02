@@ -8,7 +8,7 @@ services:
       - "traefik.http.routers.minio.rule=Host(`${GLOBAL_APP_DOMAIN}`) && PathPrefix(`/${MINIO_BUCKET_NAME}/`)"
       - "traefik.http.routers.minio.entrypoints=websecure"
       - "traefik.http.routers.minio.tls=true"
-#
+      - "traefik.http.routers.minio.tls.certresolver=le"
       - "traefik.http.routers.minio.priority=13"
       - "traefik.http.services.minio.loadbalancer.server.port=9002"
       - "traefik.http.routers.minio.middlewares=authentik-auth"

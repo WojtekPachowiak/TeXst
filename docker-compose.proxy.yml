@@ -13,6 +13,6 @@ services:
       authentik-worker:
         condition: service_healthy
     volumes:
-      - ./traefik/dynamic:/etc/traefik/dynamic
+      - ${ROOT_DIR}/traefik/dynamic:/etc/traefik/dynamic
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped

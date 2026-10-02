@@ -54,7 +54,7 @@ services:
     # ports:
       # - "9090:9090"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${ROOT_DIR}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     depends_on:
       - restapi
@@ -75,8 +75,8 @@ services:
       - GF_AUTH_ANONYMOUS_ENABLED=${GF_AUTH_ANONYMOUS_ENABLED}
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./grafana/dashboards:/etc/grafana/dashboards
-      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ${ROOT_DIR}/grafana/dashboards:/etc/grafana/dashboards
+      - ${ROOT_DIR}/grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - prometheus
     restart: unless-stopped

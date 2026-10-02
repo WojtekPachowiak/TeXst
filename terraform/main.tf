@@ -18,8 +18,9 @@ variable "domain" {
 }
 
 locals {
-  app_domain  = "https://app.${var.domain}"
-  auth_domain = "https://auth.${var.domain}"
+  brand_domain = "${var.domain}"
+  app_domain   = "https://app.${var.domain}"
+  auth_domain  = "https://auth.${var.domain}"
 }
 
 variable "authentik_token" {
@@ -85,7 +86,7 @@ resource "authentik_source_oauth" "google" {
   authentication_flow = data.authentik_flow.source_auth.id
   enrollment_flow     = data.authentik_flow.source_enroll.id
 }
-
+ 
 //======================== LOGOUT
 
 resource "authentik_flow" "logout" {
@@ -340,58 +341,6 @@ resource "authentik_flow_stage_binding" "login_2" {
 
 
 
-
-//==================== BRANDING
-
-# data "authentik_flow" "invalidation" {
-#   slug = "default-invalidation-flow"
-# }
-
-# import {
-#   to = authentik_flow.invalidation
-#   id  = data.authentik_flow.invalidation.id
-# }
-
-# resource "authentik_flow" "invalidation" {
-#   background = ""
-#   designation = "invalidation"
-#   name=""
-#   invalidation=""
-# }
-
-# data "authentik_brand" "authentik-default" {
-#   domain = "authentik-default"
-# }
-
-# import {
-#   to = authentik_brand.default_brand
-#   id = data.authentik_brand.authentik-default.id
-# }
-
-resource "authentik_brand" "texst_brand" {
-  domain  = var.domain
-  default = false
-
-  # flow_invalidation                = data.authentik_flow.invalidation.id
-  flow_invalidation                = authentik_flow.logout.uuid
-  flow_authentication              = authentik_flow.login.uuid
-  flow_recovery                    = authentik_flow.recovery.uuid
-  default_application              = authentik_application.TeXst.uuid
-  branding_title                   = "TeXst"
-  branding_logo                    = "branding/logo.svg"
-  branding_favicon                 = "branding/favicon.ico"
-  branding_default_flow_background = "branding/background.jpg"
-  # branding_custom_css              = <<-CSS
-  #   :root {
-  #     --ak-accent: #6366f1;
-  #   }
-  #   .pf-c-login__main {
-  #     backdrop-filter: blur(6px);
-  #   }
-  # CSS
-  # lifecycle { prevent_destroy = true }
-}
-
 // ================ PROVIDER
 
 data "authentik_flow" "authorization_implicit_consent" {
@@ -456,4 +405,127 @@ data "authentik_outpost" "embedded" {
 resource "authentik_outpost_provider_attachment" "attachment" {
   outpost           = data.authentik_outpost.embedded.id
   protocol_provider = authentik_provider_proxy.traefik_forward_auth.id
+}
+
+
+
+
+
+#====================
+
+variable "default_brand_default" {
+  type    = bool
+  default = false
+}
+
+variable "default_source_enrollment_title" {
+  type    = string
+  default = "Please select a username."
+}
+
+resource "terraform_data" "default_brand_default" {
+  triggers_replace = [var.default_brand_default]
+
+  provisioner "local-exec" {
+    environment = {
+      AK_TOKEN = var.authentik_token
+      AK_URL   = local.auth_domain
+    }
+    command = <<-EOT
+      curl -sf -X PATCH "$AK_URL/api/v3/core/brands/${data.authentik_brand.authentik-default.id}/" \
+        -H "Authorization: Bearer $AK_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{"default": "${var.default_brand_default}"}'
+    EOT
+  }
+}
+
+resource "terraform_data" "default_source_enrollment_title" {
+  triggers_replace = [var.default_source_enrollment_title]
+
+  provisioner "local-exec" {
+    environment = {
+      AK_TOKEN = var.authentik_token
+      AK_URL   = local.auth_domain
+    }
+    command = <<-EOT
+      curl -sf -X PATCH "$AK_URL/api/v3/flows/instances/default-source-enrollment/" \
+        -H "Authorization: Bearer $AK_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{"title": "${var.default_source_enrollment_title}"}'
+    EOT
+  }
+}
+
+
+
+
+//==================== BRANDING
+
+# data "authentik_flow" "invalidation" {
+#   slug = "default-invalidation-flow"
+# }
+
+# import {
+#   to = authentik_flow.invalidation
+#   id  = data.authentik_flow.invalidation.id
+# }
+
+# resource "authentik_flow" "invalidation" {
+#   background = ""
+#   designation = "invalidation"
+#   name=""
+#   invalidation=""
+# }
+
+data "authentik_brand" "authentik-default" {
+  domain = "authentik-default"
+}
+
+
+# import {
+#   to = authentik_brand.default
+#   id = data.authentik_brand.authentik-default.id
+# }
+
+# resource "authentik_brand" "default" {
+#   domain  = "authentik-default"
+#   default = false
+# }
+
+resource "authentik_brand" "texst_brand" {
+  domain  = local.brand_domain
+  default = true
+
+  # flow_invalidation                = data.authentik_flow.invalidation.id
+  flow_invalidation                = authentik_flow.logout.uuid
+  flow_authentication              = authentik_flow.login.uuid
+  flow_recovery                    = authentik_flow.recovery.uuid
+  default_application              = authentik_application.TeXst.uuid
+  branding_title                   = "TeXst"
+  branding_logo                    = "branding/logo.svg"
+  branding_favicon                 = "branding/favicon.ico"
+  branding_default_flow_background = "branding/background.jpg"
+  # branding_custom_css              = <<-CSS
+  #   :root {
+  #     --ak-accent: #6366f1;
+  #   }
+  #   .pf-c-login__main {
+  #     backdrop-filter: blur(6px);
+  #   }
+  # CSS
+  # lifecycle { prevent_destroy = true }
+
+    depends_on = [terraform_data.default_brand_default]
+}
+
+#====================== default user
+
+
+resource "authentik_user" "test_user" {
+  username  = "HireMe"
+  name      = "HireMe"
+  type      = "external"   # internal | external | service_account | internal_service_account
+  password  = "HireMe"
+  is_active = true
 }
